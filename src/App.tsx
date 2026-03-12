@@ -1,16 +1,23 @@
 function App() {
   return (
-    <main style={{ padding: "40px", fontFamily: "sans-serif" }}>
-      <h1>DeepStream</h1>
-      <p>DeepStream アプリの開発環境が起動しました。</p>
+    <main style={{ minHeight: "100vh", padding: "40px" }}>
+      <header style={{ marginBottom: "32px" }}>
+        <h1 style={{ margin: 0, fontSize: "32px" }}>DeepStream</h1>
+        <p style={{ marginTop: "8px" }}>
+          DeepStream アプリのベース画面です。
+        </p>
+      </header>
 
-      <section style={{ marginTop: "24px" }}>
-        <h2>Next Mission</h2>
-        <ul>
-          <li>画面構成を決める</li>
-          <li>必要なコンポーネントを分ける</li>
-          <li>状態管理とデータ構造を設計する</li>
-        </ul>
+      <section
+        style={{
+          background: "#ffffff",
+          padding: "24px",
+          borderRadius: "12px",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+        }}
+      >
+        <h2 style={{ marginTop: 0 }}>現在の状態</h2>
+        <p>React + TypeScript + Vite の初期環境が動作しています。</p>
       </section>
     </main>
   );
