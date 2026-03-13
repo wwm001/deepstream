@@ -1,4 +1,5 @@
 import StreamCard from "./StreamCard";
+import StatusPill from "./StatusPill";
 import { dashboardCards } from "../dashboardCards";
 
 function Dashboard() {
@@ -26,19 +27,11 @@ function Dashboard() {
           </p>
         </div>
 
-        <p
-          style={{
-            margin: 0,
-            fontSize: "13px",
-            color: "#374151",
-            fontWeight: 700,
-            background: "#eef2ff",
-            padding: "8px 12px",
-            borderRadius: "999px",
-          }}
-        >
-          表示カード数: {dashboardCards.length}
-        </p>
+        <StatusPill
+          label={`表示カード数: ${dashboardCards.length}`}
+          tone="gray"
+          uppercase={false}
+        />
       </div>
 
       <div

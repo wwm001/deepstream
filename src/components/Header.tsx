@@ -39,7 +39,11 @@ function Header() {
         </p>
       </div>
 
-      <StatusPill label={appMeta.statusText} tone="gray" />
+      <StatusPill
+        label={appMeta.statusText}
+        tone="gray"
+        uppercase={false}
+      />
     </header>
   );
 }

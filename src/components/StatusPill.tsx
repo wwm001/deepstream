@@ -1,6 +1,7 @@
 type StatusPillProps = {
   label: string;
   tone?: "indigo" | "gray";
+  uppercase?: boolean;
 };
 
 const toneStyles = {
@@ -14,7 +15,11 @@ const toneStyles = {
   },
 };
 
-function StatusPill({ label, tone = "gray" }: StatusPillProps) {
+function StatusPill({
+  label,
+  tone = "gray",
+  uppercase = true,
+}: StatusPillProps) {
   const style = toneStyles[tone];
 
   return (
@@ -24,7 +29,7 @@ function StatusPill({ label, tone = "gray" }: StatusPillProps) {
         fontSize: "12px",
         fontWeight: 700,
         letterSpacing: "0.08em",
-        textTransform: "uppercase",
+        textTransform: uppercase ? "uppercase" : "none",
         color: style.color,
         background: style.background,
         padding: "6px 10px",
