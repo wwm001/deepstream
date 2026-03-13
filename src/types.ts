@@ -3,3 +3,8 @@ export type DashboardCard = {
   description: string;
   type: string;
 };
+
+export type NavigationItem = {
+  label: string;
+  active: boolean;
+};
