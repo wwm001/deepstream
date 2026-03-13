@@ -2,6 +2,7 @@ import StreamCard from "./StreamCard";
 import StatusPill from "./StatusPill";
 import SectionHeader from "./SectionHeader";
 import DashboardSummary from "./DashboardSummary";
+import DashboardDetailPanel from "./DashboardDetailPanel";
 import { dashboardSections } from "../dashboardCards";
 import type { NavigationSection } from "../navigationItems";
 
@@ -30,6 +31,11 @@ function Dashboard({ currentSection }: DashboardProps) {
         sectionLabel={currentSection}
         statusLabel={section.statusLabel}
         focusLabel={section.focusLabel}
+      />
+
+      <DashboardDetailPanel
+        title="Section Details"
+        items={section.detailItems}
       />
 
       <div
