@@ -6,7 +6,14 @@ import PageCard from "./components/PageCard";
 
 function App() {
   return (
-    <main style={{ minHeight: "100vh", padding: "40px" }}>
+    <main
+      style={{
+        minHeight: "100vh",
+        padding: "40px 24px",
+        maxWidth: "1200px",
+        margin: "0 auto",
+      }}
+    >
       <Header />
 
       <div
