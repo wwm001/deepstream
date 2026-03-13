@@ -8,3 +8,11 @@ export type NavigationItem = {
   label: string;
   active: boolean;
 };
+
+export type AppMeta = {
+  title: string;
+  subtitle: string;
+  footerText: string;
+  badge: string;
+  statusText: string;
+};

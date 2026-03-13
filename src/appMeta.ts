@@ -1,4 +1,6 @@
-export const appMeta = {
+import type { AppMeta } from "./types";
+
+export const appMeta: AppMeta = {
   title: "DeepStream",
   subtitle: "DeepStream アプリのベース画面です。",
   footerText: "DeepStream prototype / built with React + TypeScript + Vite",
