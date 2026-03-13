@@ -1,3 +1,5 @@
+import { navigationItems } from "../navigationItems";
+
 function Sidebar() {
   return (
     <aside>
@@ -13,10 +15,9 @@ function Sidebar() {
             gap: "12px",
           }}
         >
-          <li>ホーム</li>
-          <li>ストリーム</li>
-          <li>ライブラリ</li>
-          <li>設定</li>
+          {navigationItems.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
         </ul>
       </nav>
     </aside>
