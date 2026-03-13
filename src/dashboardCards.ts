@@ -5,14 +5,14 @@ export const dashboardCards = [
   },
   {
     title: "Recent Activity",
-    description: "コンポーネント分割を進行中です。",
+    description: "コンポーネント分割とUI整理を進行中です。",
   },
   {
     title: "Next Mission",
-    description: "データ構造と画面設計を追加します。",
+    description: "画面構成を実用レベルへ近づけます。",
   },
   {
     title: "Prototype Stage",
-    description: "MacBook Pro 側で作業を再開しました。",
+    description: "MacBook Pro 側で作業を継続しています。",
   },
 ];
