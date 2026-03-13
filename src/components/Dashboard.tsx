@@ -1,4 +1,5 @@
 import StreamCard from "./StreamCard";
+import { dashboardCards } from "../dashboardCards";
 
 function Dashboard() {
   return (
@@ -14,18 +15,13 @@ function Dashboard() {
           marginTop: "24px",
         }}
       >
-        <StreamCard
-          title="Now Status"
-          description="DeepStream は起動中です。"
-        />
-        <StreamCard
-          title="Recent Activity"
-          description="コンポーネント分割を進行中です。"
-        />
-        <StreamCard
-          title="Next Mission"
-          description="データ構造と画面設計を追加します。"
-        />
+        {dashboardCards.map((card) => (
+          <StreamCard
+            key={card.title}
+            title={card.title}
+            description={card.description}
+          />
+        ))}
       </div>
     </section>
   );
