@@ -15,15 +15,26 @@ function Dashboard() {
       >
         <div>
           <h2 style={{ marginTop: 0, marginBottom: "8px" }}>Dashboard</h2>
-          <p style={{ margin: 0 }}>ここにメインの情報表示エリアを作っていきます。</p>
+          <p
+            style={{
+              margin: 0,
+              color: "#4b5563",
+              lineHeight: 1.6,
+            }}
+          >
+            ここにメインの情報表示エリアを作っていきます。
+          </p>
         </div>
 
         <p
           style={{
             margin: 0,
-            fontSize: "14px",
-            color: "#6b7280",
-            fontWeight: 600,
+            fontSize: "13px",
+            color: "#374151",
+            fontWeight: 700,
+            background: "#eef2ff",
+            padding: "8px 12px",
+            borderRadius: "999px",
           }}
         >
           表示カード数: {dashboardCards.length}
