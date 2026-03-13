@@ -13,11 +13,15 @@ function Header() {
       <p
         style={{
           margin: 0,
+          display: "inline-block",
           fontSize: "12px",
           fontWeight: 700,
           letterSpacing: "0.08em",
-          color: "#6b7280",
+          color: "#4f46e5",
           textTransform: "uppercase",
+          background: "#eef2ff",
+          padding: "6px 10px",
+          borderRadius: "999px",
         }}
       >
         {appMeta.badge}
@@ -25,7 +29,7 @@ function Header() {
 
       <h1
         style={{
-          margin: "8px 0 0 0",
+          margin: "12px 0 0 0",
           fontSize: "32px",
         }}
       >
@@ -36,6 +40,7 @@ function Header() {
         style={{
           margin: "8px 0 0 0",
           color: "#4b5563",
+          lineHeight: 1.6,
         }}
       >
         {appMeta.subtitle}
