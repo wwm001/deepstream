@@ -1,4 +1,5 @@
 import { appMeta } from "../appMeta";
+import StatusPill from "./StatusPill";
 
 function Header() {
   return (
@@ -16,22 +17,7 @@ function Header() {
       }}
     >
       <div>
-        <p
-          style={{
-            margin: 0,
-            display: "inline-block",
-            fontSize: "12px",
-            fontWeight: 700,
-            letterSpacing: "0.08em",
-            color: "#4f46e5",
-            textTransform: "uppercase",
-            background: "#eef2ff",
-            padding: "6px 10px",
-            borderRadius: "999px",
-          }}
-        >
-          {appMeta.badge}
-        </p>
+        <StatusPill label={appMeta.badge} tone="indigo" />
 
         <h1
           style={{
@@ -53,20 +39,7 @@ function Header() {
         </p>
       </div>
 
-      <p
-        style={{
-          margin: 0,
-          fontSize: "13px",
-          color: "#374151",
-          fontWeight: 700,
-          background: "#f9fafb",
-          border: "1px solid #e5e7eb",
-          padding: "8px 12px",
-          borderRadius: "999px",
-        }}
-      >
-        {appMeta.statusText}
-      </p>
+      <StatusPill label={appMeta.statusText} tone="gray" />
     </header>
   );
 }
