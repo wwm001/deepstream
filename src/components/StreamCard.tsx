@@ -22,11 +22,15 @@ function StreamCard({ title, description, type }: StreamCardProps) {
         <p
           style={{
             margin: "0 0 10px 0",
+            display: "inline-block",
             fontSize: "11px",
             fontWeight: 700,
             letterSpacing: "0.08em",
             textTransform: "uppercase",
-            color: "#6b7280",
+            color: "#4f46e5",
+            background: "#eef2ff",
+            padding: "4px 8px",
+            borderRadius: "999px",
           }}
         >
           {type}
