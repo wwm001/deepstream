@@ -4,7 +4,31 @@ type StreamCardProps = {
   type: string;
 };
 
+const badgeStyles: Record<string, { color: string; background: string }> = {
+  ステータス: {
+    color: "#1d4ed8",
+    background: "#dbeafe",
+  },
+  進行中: {
+    color: "#047857",
+    background: "#d1fae5",
+  },
+  "次の一手": {
+    color: "#b45309",
+    background: "#fef3c7",
+  },
+  試作段階: {
+    color: "#7c3aed",
+    background: "#ede9fe",
+  },
+};
+
 function StreamCard({ title, description, type }: StreamCardProps) {
+  const badgeStyle = badgeStyles[type] ?? {
+    color: "#4f46e5",
+    background: "#eef2ff",
+  };
+
   return (
     <article
       style={{
@@ -27,8 +51,8 @@ function StreamCard({ title, description, type }: StreamCardProps) {
             fontWeight: 700,
             letterSpacing: "0.08em",
             textTransform: "uppercase",
-            color: "#4f46e5",
-            background: "#eef2ff",
+            color: badgeStyle.color,
+            background: badgeStyle.background,
             padding: "4px 8px",
             borderRadius: "999px",
           }}
