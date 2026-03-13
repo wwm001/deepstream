@@ -3,7 +3,8 @@ import StatusPill from "./StatusPill";
 import SectionHeader from "./SectionHeader";
 import DashboardSummary from "./DashboardSummary";
 import DashboardDetailPanel from "./DashboardDetailPanel";
-import { dashboardSections } from "../dashboardCards";
+import SettingsStatusList from "./SettingsStatusList";
+import { dashboardSections, settingsChecks } from "../dashboardCards";
 import type { NavigationSection } from "../navigationItems";
 
 type DashboardProps = {
@@ -37,6 +38,10 @@ function Dashboard({ currentSection }: DashboardProps) {
         title="Section Details"
         items={section.detailItems}
       />
+
+      {currentSection === "設定" && (
+        <SettingsStatusList items={settingsChecks} />
+      )}
 
       <div
         style={{
