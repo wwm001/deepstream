@@ -2,7 +2,12 @@ import { navigationItems } from "../navigationItems";
 
 function Sidebar() {
   return (
-    <aside>
+    <aside
+      style={{
+        position: "sticky",
+        top: "24px",
+      }}
+    >
       <h2 style={{ marginTop: 0 }}>Navigation</h2>
 
       <nav>
