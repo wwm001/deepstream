@@ -21,6 +21,13 @@ export type SettingCheck = {
   note: string;
 };
 
+export type LibraryAsset = {
+  name: string;
+  role: string;
+  state: "stable" | "active" | "next";
+  note: string;
+};
+
 export const settingsChecks: SettingCheck[] = [
   {
     label: "Dev Server",
@@ -45,6 +52,57 @@ export const settingsChecks: SettingCheck[] = [
     value: "セクション別の専用表示を追加中",
     state: "next",
     note: "設定以外の画面にも、そのセクション専用の表示ブロックを増やしていく余地があります。",
+  },
+];
+
+export const libraryAssets: LibraryAsset[] = [
+  {
+    name: "StatusPill",
+    role: "状態ラベル表示コンポーネント",
+    state: "stable",
+    note: "Header や Dashboard で共通利用している基礎部品です。",
+  },
+  {
+    name: "SectionHeader",
+    role: "セクション見出し表示コンポーネント",
+    state: "stable",
+    note: "タイトル・説明・右側補助要素をまとめて扱える設計です。",
+  },
+  {
+    name: "SidebarNavItem",
+    role: "サイドバー項目の単体表示",
+    state: "stable",
+    note: "active 状態とクリック処理を受け持つ小粒の部品です。",
+  },
+  {
+    name: "AppLayout",
+    role: "全体レイアウトの司令塔",
+    state: "active",
+    note: "Header / Sidebar / Content / Footer の配置責務を集約しています。",
+  },
+  {
+    name: "DashboardSummary",
+    role: "セクション概要パネル",
+    state: "active",
+    note: "Current Section / Status / Focus をまとめて表示しています。",
+  },
+  {
+    name: "DashboardDetailPanel",
+    role: "セクション詳細情報の表示",
+    state: "active",
+    note: "各画面の文脈や運用メモを、詳細ブロックとして表示しています。",
+  },
+  {
+    name: "SettingsStatusList",
+    role: "設定専用の状態確認パネル",
+    state: "active",
+    note: "設定セクションだけに出る専用UIとして追加済みです。",
+  },
+  {
+    name: "LibraryAssetList",
+    role: "ライブラリ専用の資産一覧パネル",
+    state: "next",
+    note: "今回追加する専用UIで、再利用部品の棚卸し表示を担います。",
   },
 ];
 

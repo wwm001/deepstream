@@ -4,7 +4,12 @@ import SectionHeader from "./SectionHeader";
 import DashboardSummary from "./DashboardSummary";
 import DashboardDetailPanel from "./DashboardDetailPanel";
 import SettingsStatusList from "./SettingsStatusList";
-import { dashboardSections, settingsChecks } from "../dashboardCards";
+import LibraryAssetList from "./LibraryAssetList";
+import {
+  dashboardSections,
+  settingsChecks,
+  libraryAssets,
+} from "../dashboardCards";
 import type { NavigationSection } from "../navigationItems";
 
 type DashboardProps = {
@@ -38,6 +43,10 @@ function Dashboard({ currentSection }: DashboardProps) {
         title="Section Details"
         items={section.detailItems}
       />
+
+      {currentSection === "ライブラリ" && (
+        <LibraryAssetList items={libraryAssets} />
+      )}
 
       {currentSection === "設定" && (
         <SettingsStatusList items={settingsChecks} />
