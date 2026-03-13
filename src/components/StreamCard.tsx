@@ -1,10 +1,12 @@
+import type { DashboardCardType } from "../types";
+
 type StreamCardProps = {
   title: string;
   description: string;
-  type: string;
+  type: DashboardCardType;
 };
 
-const badgeStyles: Record<string, { color: string; background: string }> = {
+const badgeStyles: Record<DashboardCardType, { color: string; background: string }> = {
   ステータス: {
     color: "#1d4ed8",
     background: "#dbeafe",
@@ -13,7 +15,7 @@ const badgeStyles: Record<string, { color: string; background: string }> = {
     color: "#047857",
     background: "#d1fae5",
   },
-  "次の一手": {
+  次の一手: {
     color: "#b45309",
     background: "#fef3c7",
   },
@@ -24,10 +26,7 @@ const badgeStyles: Record<string, { color: string; background: string }> = {
 };
 
 function StreamCard({ title, description, type }: StreamCardProps) {
-  const badgeStyle = badgeStyles[type] ?? {
-    color: "#4f46e5",
-    background: "#eef2ff",
-  };
+  const badgeStyle = badgeStyles[type];
 
   return (
     <article
