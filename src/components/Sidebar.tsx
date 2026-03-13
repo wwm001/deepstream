@@ -16,7 +16,18 @@ function Sidebar() {
           }}
         >
           {navigationItems.map((item) => (
-            <li key={item}>{item}</li>
+            <li
+              key={item.label}
+              style={{
+                padding: "12px 14px",
+                borderRadius: "10px",
+                background: item.active ? "#111827" : "#f3f4f6",
+                color: item.active ? "#ffffff" : "#111827",
+                fontWeight: item.active ? 700 : 500,
+              }}
+            >
+              {item.label}
+            </li>
           ))}
         </ul>
       </nav>

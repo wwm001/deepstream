@@ -1,6 +1,6 @@
 export const navigationItems = [
-  "ホーム",
-  "ストリーム",
-  "ライブラリ",
-  "設定",
+  { label: "ホーム", active: true },
+  { label: "ストリーム", active: false },
+  { label: "ライブラリ", active: false },
+  { label: "設定", active: false },
 ];
