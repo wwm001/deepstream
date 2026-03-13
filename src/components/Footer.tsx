@@ -1,7 +1,9 @@
+import { appMeta } from "../appMeta";
+
 function Footer() {
   return (
     <footer style={{ marginTop: "32px", color: "#666" }}>
-      <small>DeepStream prototype / built with React + TypeScript + Vite</small>
+      <small>{appMeta.footerText}</small>
     </footer>
   );
 }
