@@ -1,8 +1,10 @@
+import { appMeta } from "../appMeta";
+
 function Header() {
   return (
     <header>
-      <h1>DeepStream</h1>
-      <p>DeepStream アプリのベース画面です。</p>
+      <h1>{appMeta.title}</h1>
+      <p>{appMeta.subtitle}</p>
     </header>
   );
 }
