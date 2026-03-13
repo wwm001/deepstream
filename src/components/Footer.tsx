@@ -9,7 +9,10 @@ function Footer() {
         textAlign: "center",
       }}
     >
-      <small>{appMeta.footerText}</small>
+      <small style={{ display: "block" }}>{appMeta.footerText}</small>
+      <small style={{ display: "block", marginTop: "6px", color: "#9ca3af" }}>
+        {appMeta.statusText}
+      </small>
     </footer>
   );
 }
