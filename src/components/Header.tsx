@@ -8,42 +8,64 @@ function Header() {
         padding: "24px 28px",
         borderRadius: "16px",
         boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        gap: "24px",
+        flexWrap: "wrap",
       }}
     >
+      <div>
+        <p
+          style={{
+            margin: 0,
+            display: "inline-block",
+            fontSize: "12px",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            color: "#4f46e5",
+            textTransform: "uppercase",
+            background: "#eef2ff",
+            padding: "6px 10px",
+            borderRadius: "999px",
+          }}
+        >
+          {appMeta.badge}
+        </p>
+
+        <h1
+          style={{
+            margin: "12px 0 0 0",
+            fontSize: "32px",
+          }}
+        >
+          {appMeta.title}
+        </h1>
+
+        <p
+          style={{
+            margin: "8px 0 0 0",
+            color: "#4b5563",
+            lineHeight: 1.6,
+          }}
+        >
+          {appMeta.subtitle}
+        </p>
+      </div>
+
       <p
         style={{
           margin: 0,
-          display: "inline-block",
-          fontSize: "12px",
+          fontSize: "13px",
+          color: "#374151",
           fontWeight: 700,
-          letterSpacing: "0.08em",
-          color: "#4f46e5",
-          textTransform: "uppercase",
-          background: "#eef2ff",
-          padding: "6px 10px",
+          background: "#f9fafb",
+          border: "1px solid #e5e7eb",
+          padding: "8px 12px",
           borderRadius: "999px",
         }}
       >
-        {appMeta.badge}
-      </p>
-
-      <h1
-        style={{
-          margin: "12px 0 0 0",
-          fontSize: "32px",
-        }}
-      >
-        {appMeta.title}
-      </h1>
-
-      <p
-        style={{
-          margin: "8px 0 0 0",
-          color: "#4b5563",
-          lineHeight: 1.6,
-        }}
-      >
-        {appMeta.subtitle}
+        {appMeta.statusText}
       </p>
     </header>
   );
