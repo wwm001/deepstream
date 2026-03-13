@@ -12,6 +12,7 @@ function PageCard({ children }: PageCardProps) {
         padding: "24px",
         borderRadius: "12px",
         boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+        height: "100%",
       }}
     >
       {children}
