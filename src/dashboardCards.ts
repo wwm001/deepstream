@@ -2,21 +2,21 @@ export const dashboardCards = [
   {
     title: "Now Status",
     description: "DeepStream は起動中です。",
-    type: "status",
+    type: "ステータス",
   },
   {
     title: "Recent Activity",
     description: "コンポーネント分割とUI整理を進行中です。",
-    type: "activity",
+    type: "進行中",
   },
   {
     title: "Next Mission",
     description: "画面構成を実用レベルへ近づけます。",
-    type: "mission",
+    type: "次の一手",
   },
   {
     title: "Prototype Stage",
     description: "MacBook Pro 側で作業を継続しています。",
-    type: "prototype",
+    type: "試作段階",
   },
 ];
