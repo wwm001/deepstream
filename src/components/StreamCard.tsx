@@ -1,9 +1,10 @@
 type StreamCardProps = {
   title: string;
   description: string;
+  type: string;
 };
 
-function StreamCard({ title, description }: StreamCardProps) {
+function StreamCard({ title, description, type }: StreamCardProps) {
   return (
     <article
       style={{
@@ -18,6 +19,19 @@ function StreamCard({ title, description }: StreamCardProps) {
       }}
     >
       <div>
+        <p
+          style={{
+            margin: "0 0 10px 0",
+            fontSize: "11px",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "#6b7280",
+          }}
+        >
+          {type}
+        </p>
+
         <h3
           style={{
             marginTop: 0,

@@ -54,6 +54,7 @@ function Dashboard() {
             key={card.title}
             title={card.title}
             description={card.description}
+            type={card.type}
           />
         ))}
       </div>
