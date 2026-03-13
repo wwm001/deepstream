@@ -20,7 +20,7 @@ function Header() {
           textTransform: "uppercase",
         }}
       >
-        Prototype
+        {appMeta.badge}
       </p>
 
       <h1
