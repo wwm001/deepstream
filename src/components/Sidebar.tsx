@@ -8,7 +8,18 @@ function Sidebar() {
         top: "24px",
       }}
     >
-      <h2 style={{ marginTop: 0 }}>Navigation</h2>
+      <p
+        style={{
+          margin: "0 0 8px 0",
+          fontSize: "12px",
+          fontWeight: 700,
+          letterSpacing: "0.08em",
+          color: "#6b7280",
+          textTransform: "uppercase",
+        }}
+      >
+        Navigation
+      </p>
 
       <nav>
         <ul
