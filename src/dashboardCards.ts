@@ -1,103 +1,121 @@
 import type { DashboardCard } from "./types";
 import type { NavigationSection } from "./navigationItems";
 
-export const dashboardSectionDescriptions: Record<NavigationSection, string> = {
-  ホーム: "DeepStream 全体の現在地と重要ポイントを表示します。",
-  ストリーム: "進行中の更新や作業ログの流れを表示します。",
-  ライブラリ: "再利用できる部品や参照情報を整理して表示します。",
-  設定: "環境情報や状態確認用の項目を表示します。",
+type DashboardSectionData = {
+  description: string;
+  statusLabel: string;
+  focusLabel: string;
+  cards: DashboardCard[];
 };
 
-export const dashboardCardsBySection: Record<
-  NavigationSection,
-  DashboardCard[]
-> = {
-  ホーム: [
-    {
-      title: "Now Status",
-      description: "DeepStream は起動中です。",
-      type: "ステータス",
+export const dashboardSections: Record<NavigationSection, DashboardSectionData> =
+  {
+    ホーム: {
+      description: "DeepStream 全体の現在地と重要ポイントを表示します。",
+      statusLabel: "全体状況を監視中",
+      focusLabel: "主要状態の可視化",
+      cards: [
+        {
+          title: "Now Status",
+          description: "DeepStream は起動中です。",
+          type: "ステータス",
+        },
+        {
+          title: "Mission Focus",
+          description: "画面構成を実用レベルへ近づける段階です。",
+          type: "次の一手",
+        },
+        {
+          title: "Build State",
+          description: "状態管理を導入し、静的モックを卒業しました。",
+          type: "進行中",
+        },
+        {
+          title: "Prototype Readiness",
+          description: "UI確認と小分け保存を継続できる状態です。",
+          type: "試作段階",
+        },
+      ],
     },
-    {
-      title: "Mission Focus",
-      description: "画面構成を実用レベルへ近づける段階です。",
-      type: "次の一手",
+    ストリーム: {
+      description: "進行中の更新や作業ログの流れを表示します。",
+      statusLabel: "更新フローを追跡中",
+      focusLabel: "作業の連続性確認",
+      cards: [
+        {
+          title: "Recent Activity",
+          description: "コンポーネント分割と状態管理の整備を進行中です。",
+          type: "進行中",
+        },
+        {
+          title: "Sidebar Control",
+          description: "ナビゲーション選択が画面状態に連動しています。",
+          type: "ステータス",
+        },
+        {
+          title: "Next Update",
+          description: "セクションごとの実データ表示をさらに磨きます。",
+          type: "次の一手",
+        },
+        {
+          title: "Flow Check",
+          description: "表示確認と Git 保存の運用フローは安定しています。",
+          type: "試作段階",
+        },
+      ],
     },
-    {
-      title: "Build State",
-      description: "状態管理を導入し、静的モックを卒業しました。",
-      type: "進行中",
+    ライブラリ: {
+      description: "再利用できる部品や参照情報を整理して表示します。",
+      statusLabel: "設計資産を蓄積中",
+      focusLabel: "再利用部品の整理",
+      cards: [
+        {
+          title: "Reusable Parts",
+          description: "StatusPill / SectionHeader / SidebarNavItem を再利用中です。",
+          type: "ステータス",
+        },
+        {
+          title: "Layout Module",
+          description: "AppLayout に画面全体レイアウト責務を集約しました。",
+          type: "進行中",
+        },
+        {
+          title: "Next Extraction",
+          description: "今後は実機能追加を優先し、過分解は避けます。",
+          type: "次の一手",
+        },
+        {
+          title: "Component Shelf",
+          description: "小さく切って保存する設計資産が蓄積されています。",
+          type: "試作段階",
+        },
+      ],
     },
-    {
-      title: "Prototype Readiness",
-      description: "UI確認と小分け保存を継続できる状態です。",
-      type: "試作段階",
+    設定: {
+      description: "環境情報や状態確認用の項目を表示します。",
+      statusLabel: "開発環境を監視中",
+      focusLabel: "同期状態の安定維持",
+      cards: [
+        {
+          title: "Environment Check",
+          description: "Vite 開発サーバーでローカル確認を継続しています。",
+          type: "ステータス",
+        },
+        {
+          title: "Git Sync",
+          description: "main ブランチは GitHub と同期された状態です。",
+          type: "進行中",
+        },
+        {
+          title: "Next Config",
+          description: "表示内容の実データ化と操作導線の強化を進めます。",
+          type: "次の一手",
+        },
+        {
+          title: "Prototype Ops",
+          description: "ローカル確認 → commit → push の運用が定着しています。",
+          type: "試作段階",
+        },
+      ],
     },
-  ],
-  ストリーム: [
-    {
-      title: "Recent Activity",
-      description: "コンポーネント分割と状態管理の整備を進行中です。",
-      type: "進行中",
-    },
-    {
-      title: "Sidebar Control",
-      description: "ナビゲーション選択が画面状態に連動しています。",
-      type: "ステータス",
-    },
-    {
-      title: "Next Update",
-      description: "セクションごとの実データ表示をさらに磨きます。",
-      type: "次の一手",
-    },
-    {
-      title: "Flow Check",
-      description: "表示確認と Git 保存の運用フローは安定しています。",
-      type: "試作段階",
-    },
-  ],
-  ライブラリ: [
-    {
-      title: "Reusable Parts",
-      description: "StatusPill / SectionHeader / SidebarNavItem を再利用中です。",
-      type: "ステータス",
-    },
-    {
-      title: "Layout Module",
-      description: "AppLayout に画面全体レイアウト責務を集約しました。",
-      type: "進行中",
-    },
-    {
-      title: "Next Extraction",
-      description: "今後は実機能追加を優先し、過分解は避けます。",
-      type: "次の一手",
-    },
-    {
-      title: "Component Shelf",
-      description: "小さく切って保存する設計資産が蓄積されています。",
-      type: "試作段階",
-    },
-  ],
-  設定: [
-    {
-      title: "Environment Check",
-      description: "Vite 開発サーバーでローカル確認を継続しています。",
-      type: "ステータス",
-    },
-    {
-      title: "Git Sync",
-      description: "main ブランチは GitHub と同期された状態です。",
-      type: "進行中",
-    },
-    {
-      title: "Next Config",
-      description: "表示内容の実データ化と操作導線の強化を進めます。",
-      type: "次の一手",
-    },
-    {
-      title: "Prototype Ops",
-      description: "ローカル確認 → commit → push の運用が定着しています。",
-      type: "試作段階",
-    },
-  ],
-};
+  };

@@ -1,10 +1,8 @@
 import StreamCard from "./StreamCard";
 import StatusPill from "./StatusPill";
 import SectionHeader from "./SectionHeader";
-import {
-  dashboardCardsBySection,
-  dashboardSectionDescriptions,
-} from "../dashboardCards";
+import DashboardSummary from "./DashboardSummary";
+import { dashboardSections } from "../dashboardCards";
 import type { NavigationSection } from "../navigationItems";
 
 type DashboardProps = {
@@ -12,21 +10,26 @@ type DashboardProps = {
 };
 
 function Dashboard({ currentSection }: DashboardProps) {
-  const cards = dashboardCardsBySection[currentSection];
-  const description = dashboardSectionDescriptions[currentSection];
+  const section = dashboardSections[currentSection];
 
   return (
     <section>
       <SectionHeader
         title={`${currentSection} Dashboard`}
-        description={description}
+        description={section.description}
         right={
           <StatusPill
-            label={`表示カード数: ${cards.length}`}
+            label={`表示カード数: ${section.cards.length}`}
             tone="gray"
             uppercase={false}
           />
         }
+      />
+
+      <DashboardSummary
+        sectionLabel={currentSection}
+        statusLabel={section.statusLabel}
+        focusLabel={section.focusLabel}
       />
 
       <div
@@ -37,7 +40,7 @@ function Dashboard({ currentSection }: DashboardProps) {
           marginTop: "24px",
         }}
       >
-        {cards.map((card) => (
+        {section.cards.map((card) => (
           <StreamCard
             key={card.title}
             title={card.title}
