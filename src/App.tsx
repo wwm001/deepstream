@@ -2,6 +2,7 @@ import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./components/Dashboard";
 import Footer from "./components/Footer";
+import PageCard from "./components/PageCard";
 
 function App() {
   return (
@@ -16,27 +17,13 @@ function App() {
           marginTop: "32px",
         }}
       >
-        <section
-          style={{
-            background: "#ffffff",
-            padding: "24px",
-            borderRadius: "12px",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
-          }}
-        >
+        <PageCard>
           <Sidebar />
-        </section>
+        </PageCard>
 
-        <section
-          style={{
-            background: "#ffffff",
-            padding: "24px",
-            borderRadius: "12px",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
-          }}
-        >
+        <PageCard>
           <Dashboard />
-        </section>
+        </PageCard>
       </div>
 
       <Footer />
