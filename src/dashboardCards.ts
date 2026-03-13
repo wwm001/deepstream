@@ -11,4 +11,8 @@ export const dashboardCards = [
     title: "Next Mission",
     description: "データ構造と画面設計を追加します。",
   },
+  {
+    title: "Prototype Stage",
+    description: "MacBook Pro 側で作業を再開しました。",
+  },
 ];
