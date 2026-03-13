@@ -1,4 +1,6 @@
-export const dashboardCards = [
+import type { DashboardCard } from "./types";
+
+export const dashboardCards: DashboardCard[] = [
   {
     title: "Now Status",
     description: "DeepStream は起動中です。",
