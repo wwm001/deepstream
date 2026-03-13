@@ -1,8 +1,8 @@
-import type { NavigationItem } from "./types";
+export const navigationItems = [
+  "ホーム",
+  "ストリーム",
+  "ライブラリ",
+  "設定",
+] as const;
 
-export const navigationItems: NavigationItem[] = [
-  { label: "ホーム", active: true },
-  { label: "ストリーム", active: false },
-  { label: "ライブラリ", active: false },
-  { label: "設定", active: false },
-];
+export type NavigationSection = (typeof navigationItems)[number];

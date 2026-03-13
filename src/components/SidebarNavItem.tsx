@@ -1,14 +1,16 @@
 type SidebarNavItemProps = {
   label: string;
   active: boolean;
+  onClick: () => void;
 };
 
-function SidebarNavItem({ label, active }: SidebarNavItemProps) {
+function SidebarNavItem({ label, active, onClick }: SidebarNavItemProps) {
   return (
     <li>
       <button
         type="button"
         aria-pressed={active}
+        onClick={onClick}
         style={{
           width: "100%",
           textAlign: "left",

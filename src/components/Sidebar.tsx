@@ -1,7 +1,15 @@
-import { navigationItems } from "../navigationItems";
+import {
+  navigationItems,
+  type NavigationSection,
+} from "../navigationItems";
 import SidebarNavItem from "./SidebarNavItem";
 
-function Sidebar() {
+type SidebarProps = {
+  currentSection: NavigationSection;
+  onSelectSection: (section: NavigationSection) => void;
+};
+
+function Sidebar({ currentSection, onSelectSection }: SidebarProps) {
   return (
     <aside
       style={{
@@ -32,11 +40,12 @@ function Sidebar() {
             gap: "12px",
           }}
         >
-          {navigationItems.map((item) => (
+          {navigationItems.map((label) => (
             <SidebarNavItem
-              key={item.label}
-              label={item.label}
-              active={item.active}
+              key={label}
+              label={label}
+              active={label === currentSection}
+              onClick={() => onSelectSection(label)}
             />
           ))}
         </ul>
