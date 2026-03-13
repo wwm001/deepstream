@@ -28,7 +28,7 @@ function App() {
       }
       content={
         <PageCard>
-          <Dashboard />
+          <Dashboard currentSection={currentSection} />
         </PageCard>
       }
       footer={<Footer />}

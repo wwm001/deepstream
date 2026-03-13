@@ -1,17 +1,28 @@
 import StreamCard from "./StreamCard";
 import StatusPill from "./StatusPill";
 import SectionHeader from "./SectionHeader";
-import { dashboardCards } from "../dashboardCards";
+import {
+  dashboardCardsBySection,
+  dashboardSectionDescriptions,
+} from "../dashboardCards";
+import type { NavigationSection } from "../navigationItems";
 
-function Dashboard() {
+type DashboardProps = {
+  currentSection: NavigationSection;
+};
+
+function Dashboard({ currentSection }: DashboardProps) {
+  const cards = dashboardCardsBySection[currentSection];
+  const description = dashboardSectionDescriptions[currentSection];
+
   return (
     <section>
       <SectionHeader
-        title="Dashboard"
-        description="ここにメインの情報表示エリアを作っていきます。"
+        title={`${currentSection} Dashboard`}
+        description={description}
         right={
           <StatusPill
-            label={`表示カード数: ${dashboardCards.length}`}
+            label={`表示カード数: ${cards.length}`}
             tone="gray"
             uppercase={false}
           />
@@ -26,7 +37,7 @@ function Dashboard() {
           marginTop: "24px",
         }}
       >
-        {dashboardCards.map((card) => (
+        {cards.map((card) => (
           <StreamCard
             key={card.title}
             title={card.title}
