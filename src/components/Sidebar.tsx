@@ -1,4 +1,5 @@
 import { navigationItems } from "../navigationItems";
+import SidebarNavItem from "./SidebarNavItem";
 
 function Sidebar() {
   return (
@@ -32,25 +33,11 @@ function Sidebar() {
           }}
         >
           {navigationItems.map((item) => (
-            <li key={item.label}>
-              <button
-                type="button"
-                aria-pressed={item.active}
-                style={{
-                  width: "100%",
-                  textAlign: "left",
-                  padding: "12px 14px",
-                  borderRadius: "10px",
-                  border: item.active ? "none" : "1px solid #e5e7eb",
-                  background: item.active ? "#111827" : "#f9fafb",
-                  color: item.active ? "#ffffff" : "#111827",
-                  fontWeight: item.active ? 700 : 500,
-                  cursor: "pointer",
-                }}
-              >
-                {item.label}
-              </button>
-            </li>
+            <SidebarNavItem
+              key={item.label}
+              label={item.label}
+              active={item.active}
+            />
           ))}
         </ul>
       </nav>
