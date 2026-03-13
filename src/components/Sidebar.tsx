@@ -35,6 +35,7 @@ function Sidebar() {
             <li key={item.label}>
               <button
                 type="button"
+                aria-pressed={item.active}
                 style={{
                   width: "100%",
                   textAlign: "left",
