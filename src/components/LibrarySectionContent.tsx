@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import StreamCard from "./StreamCard";
 import LibraryAssetList from "./LibraryAssetList";
 import LibraryControlPanel, {
   type LibraryFilter,
 } from "./LibraryControlPanel";
+import DashboardCardGrid from "./DashboardCardGrid";
+import DashboardSectionStack from "./DashboardSectionStack";
 import { dashboardSections, libraryAssets } from "../dashboardCards";
 
 function LibrarySectionContent() {
@@ -30,7 +31,7 @@ function LibrarySectionContent() {
   }, [libraryFilter, librarySearchTerm]);
 
   return (
-    <>
+    <DashboardSectionStack>
       <LibraryControlPanel
         selectedFilter={libraryFilter}
         onSelectFilter={setLibraryFilter}
@@ -42,24 +43,8 @@ function LibrarySectionContent() {
 
       <LibraryAssetList items={filteredLibraryAssets} />
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: "16px",
-          marginTop: "24px",
-        }}
-      >
-        {section.cards.map((card) => (
-          <StreamCard
-            key={card.title}
-            title={card.title}
-            description={card.description}
-            type={card.type}
-          />
-        ))}
-      </div>
-    </>
+      <DashboardCardGrid cards={section.cards} />
+    </DashboardSectionStack>
   );
 }
 

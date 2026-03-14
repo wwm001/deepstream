@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import StreamCard from "./StreamCard";
 import StreamEventTimeline from "./StreamEventTimeline";
 import StreamControlPanel, {
   type StreamFilter,
   type StreamSort,
 } from "./StreamControlPanel";
+import DashboardCardGrid from "./DashboardCardGrid";
+import DashboardSectionStack from "./DashboardSectionStack";
 import { dashboardSections, streamEvents } from "../dashboardCards";
 
 function StreamSectionContent() {
@@ -38,7 +39,7 @@ function StreamSectionContent() {
   }, [streamFilter, streamSort]);
 
   return (
-    <>
+    <DashboardSectionStack>
       <StreamControlPanel
         selectedFilter={streamFilter}
         onSelectFilter={setStreamFilter}
@@ -50,24 +51,8 @@ function StreamSectionContent() {
 
       <StreamEventTimeline items={filteredStreamEvents} />
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: "16px",
-          marginTop: "24px",
-        }}
-      >
-        {section.cards.map((card) => (
-          <StreamCard
-            key={card.title}
-            title={card.title}
-            description={card.description}
-            type={card.type}
-          />
-        ))}
-      </div>
-    </>
+      <DashboardCardGrid cards={section.cards} />
+    </DashboardSectionStack>
   );
 }
 

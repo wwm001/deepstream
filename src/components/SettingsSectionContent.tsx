@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import StreamCard from "./StreamCard";
 import SettingsStatusList from "./SettingsStatusList";
 import SettingsControlPanel, {
   type SettingsFilter,
 } from "./SettingsControlPanel";
+import DashboardCardGrid from "./DashboardCardGrid";
+import DashboardSectionStack from "./DashboardSectionStack";
 import { dashboardSections, settingsChecks } from "../dashboardCards";
 
 function SettingsSectionContent() {
@@ -20,7 +21,7 @@ function SettingsSectionContent() {
   }, [settingsFilter]);
 
   return (
-    <>
+    <DashboardSectionStack>
       <SettingsControlPanel
         selectedFilter={settingsFilter}
         onSelectFilter={setSettingsFilter}
@@ -35,24 +36,8 @@ function SettingsSectionContent() {
         showNotes={showSettingsNotes}
       />
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: "16px",
-          marginTop: "24px",
-        }}
-      >
-        {section.cards.map((card) => (
-          <StreamCard
-            key={card.title}
-            title={card.title}
-            description={card.description}
-            type={card.type}
-          />
-        ))}
-      </div>
-    </>
+      <DashboardCardGrid cards={section.cards} />
+    </DashboardSectionStack>
   );
 }
 
