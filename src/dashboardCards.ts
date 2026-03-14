@@ -34,6 +34,13 @@ export type StreamEvent = {
   phase: "done" | "current" | "next";
 };
 
+export type HomeFocusItem = {
+  label: string;
+  title: string;
+  detail: string;
+  state: "now" | "ready" | "next";
+};
+
 export const settingsChecks: SettingCheck[] = [
   {
     label: "Dev Server",
@@ -90,7 +97,7 @@ export const libraryAssets: LibraryAsset[] = [
     name: "DashboardSummary",
     role: "セクション概要パネル",
     state: "active",
-    note: 'Current Section / Status / Focus をまとめて表示しています。',
+    note: "Current Section / Status / Focus をまとめて表示しています。",
   },
   {
     name: "DashboardDetailPanel",
@@ -113,36 +120,78 @@ export const libraryAssets: LibraryAsset[] = [
   {
     name: "StreamEventTimeline",
     role: "ストリーム専用の更新履歴パネル",
+    state: "active",
+    note: "更新イベントの流れを時系列で示す専用UIです。",
+  },
+  {
+    name: "HomeMissionPanel",
+    role: "ホーム専用の全体方針パネル",
     state: "next",
-    note: "今回追加する専用UIで、更新イベントの流れを時系列で示します。",
+    note: "今回追加する専用UIで、現在地・安定運用・次段階を一目で示します。",
   },
 ];
 
 export const streamEvents: StreamEvent[] = [
   {
     title: "UI骨格の初期構築",
-    detail: "Header / Sidebar / Dashboard / Footer の基本構成を整え、DeepStream の画面ベースを確立しました。",
+    detail:
+      "Header / Sidebar / Dashboard / Footer の基本構成を整え、DeepStream の画面ベースを確立しました。",
     phase: "done",
   },
   {
     title: "コンポーネント分割の実施",
-    detail: "StatusPill、SectionHeader、SidebarNavItem、AppLayout などを分離し、小さな責務単位へ整理しました。",
+    detail:
+      "StatusPill、SectionHeader、SidebarNavItem、AppLayout などを分離し、小さな責務単位へ整理しました。",
     phase: "done",
   },
   {
     title: "状態連動UIへ移行",
-    detail: "Sidebar の active 状態を App 管理へ移し、固定データではなく画面状態として扱う構成に変更しました。",
+    detail:
+      "Sidebar の active 状態を App 管理へ移し、固定データではなく画面状態として扱う構成に変更しました。",
     phase: "current",
   },
   {
     title: "セクション専用UIの追加",
-    detail: "設定・ライブラリ・ストリームの各画面に、それぞれ固有の補助パネルを追加する流れに入っています。",
+    detail:
+      "設定・ライブラリ・ストリームの各画面に、それぞれ固有の補助パネルを追加する流れに入っています。",
     phase: "current",
   },
   {
     title: "実データ接続への準備",
-    detail: "次は表示用の仮データを、より実運用に近いデータ構造や操作導線に寄せていく段階です。",
+    detail:
+      "次は表示用の仮データを、より実運用に近いデータ構造や操作導線に寄せていく段階です。",
     phase: "next",
+  },
+];
+
+export const homeFocusItems: HomeFocusItem[] = [
+  {
+    label: "Current Mode",
+    title: "Prototype Flight",
+    detail:
+      "DeepStream は、静的モックから状態連動型の試作機へ移行し、画面ごとの性格が見え始めています。",
+    state: "now",
+  },
+  {
+    label: "Stable Routine",
+    title: "Small Save Cycle",
+    detail:
+      "表示確認後にすぐ commit / push する運用が定着し、差分を長く抱えない安定した開発サイクルになっています。",
+    state: "ready",
+  },
+  {
+    label: "Visible Progress",
+    title: "Section-Specific UI",
+    detail:
+      "ストリーム、ライブラリ、設定に固有パネルが入り、ホームを加えれば全4画面が専用UIを持つ状態になります。",
+    state: "ready",
+  },
+  {
+    label: "Next Orbit",
+    title: "Toward Real Data",
+    detail:
+      "次段階では、仮置きの文言中心UIから、実データ構造や操作導線に近い形へ寄せていきます。",
+    state: "next",
   },
 ];
 
@@ -163,7 +212,8 @@ export const dashboardSections: Record<NavigationSection, DashboardSectionData> 
         },
         {
           label: "Operator Note",
-          value: "最小単位で改修し、表示確認後に即 commit / push する運用が安定しています。",
+          value:
+            "最小単位で改修し、表示確認後に即 commit / push する運用が安定しています。",
         },
       ],
       cards: [
@@ -237,7 +287,8 @@ export const dashboardSections: Record<NavigationSection, DashboardSectionData> 
       detailItems: [
         {
           label: "Reusable Modules",
-          value: "StatusPill / SectionHeader / SidebarNavItem / AppLayout を再利用可能な資産として保持しています。",
+          value:
+            "StatusPill / SectionHeader / SidebarNavItem / AppLayout を再利用可能な資産として保持しています。",
         },
         {
           label: "Design Policy",

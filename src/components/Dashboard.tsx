@@ -6,11 +6,13 @@ import DashboardDetailPanel from "./DashboardDetailPanel";
 import SettingsStatusList from "./SettingsStatusList";
 import LibraryAssetList from "./LibraryAssetList";
 import StreamEventTimeline from "./StreamEventTimeline";
+import HomeMissionPanel from "./HomeMissionPanel";
 import {
   dashboardSections,
   settingsChecks,
   libraryAssets,
   streamEvents,
+  homeFocusItems,
 } from "../dashboardCards";
 import type { NavigationSection } from "../navigationItems";
 
@@ -45,6 +47,10 @@ function Dashboard({ currentSection }: DashboardProps) {
         title="Section Details"
         items={section.detailItems}
       />
+
+      {currentSection === "ホーム" && (
+        <HomeMissionPanel items={homeFocusItems} />
+      )}
 
       {currentSection === "ストリーム" && (
         <StreamEventTimeline items={streamEvents} />
