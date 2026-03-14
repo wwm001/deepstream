@@ -41,6 +41,13 @@ export type HomeFocusItem = {
   state: "now" | "ready" | "next";
 };
 
+export type DashboardSnapshotItem = {
+  label: string;
+  value: string;
+  note: string;
+  tone: "indigo" | "green" | "amber" | "gray";
+};
+
 export const settingsChecks: SettingCheck[] = [
   {
     label: "Dev Server",
@@ -126,8 +133,14 @@ export const libraryAssets: LibraryAsset[] = [
   {
     name: "HomeMissionPanel",
     role: "ホーム専用の全体方針パネル",
+    state: "active",
+    note: "現在地・安定運用・次段階を一目で示す専用UIです。",
+  },
+  {
+    name: "SystemSnapshotPanel",
+    role: "ホーム専用の派生メトリクス表示",
     state: "next",
-    note: "今回追加する専用UIで、現在地・安定運用・次段階を一目で示します。",
+    note: "今回追加する専用UIで、既存データから導出した数値を表示します。",
   },
 ];
 
@@ -183,7 +196,7 @@ export const homeFocusItems: HomeFocusItem[] = [
     label: "Visible Progress",
     title: "Section-Specific UI",
     detail:
-      "ストリーム、ライブラリ、設定に固有パネルが入り、ホームを加えれば全4画面が専用UIを持つ状態になります。",
+      "ストリーム、ライブラリ、設定に固有パネルが入り、ホームを加えて全4画面が専用UIを持つ状態になりました。",
     state: "ready",
   },
   {
@@ -333,7 +346,8 @@ export const dashboardSections: Record<NavigationSection, DashboardSectionData> 
         },
         {
           label: "Git State",
-          value: "main ブランチを基準に、ローカルと GitHub の同期状態を維持しています。",
+          value:
+            "main ブランチを基準に、ローカルと GitHub の同期状態を維持しています。",
         },
         {
           label: "Operational Rule",
@@ -364,3 +378,41 @@ export const dashboardSections: Record<NavigationSection, DashboardSectionData> 
       ],
     },
   };
+
+const totalDashboardCards = Object.values(dashboardSections).reduce(
+  (sum, section) => sum + section.cards.length,
+  0
+);
+
+export const homeSystemSnapshotItems: DashboardSnapshotItem[] = [
+  {
+    label: "Sections",
+    value: String(Object.keys(dashboardSections).length),
+    note: "ホーム / ストリーム / ライブラリ / 設定 の4画面を搭載しています。",
+    tone: "indigo",
+  },
+  {
+    label: "Cards",
+    value: String(totalDashboardCards),
+    note: "全セクションを合計した表示カード数です。",
+    tone: "green",
+  },
+  {
+    label: "Assets",
+    value: String(libraryAssets.length),
+    note: "ライブラリで管理している再利用資産の数です。",
+    tone: "gray",
+  },
+  {
+    label: "Events",
+    value: String(streamEvents.length),
+    note: "ストリーム画面で追跡している更新イベント数です。",
+    tone: "amber",
+  },
+  {
+    label: "Checks",
+    value: String(settingsChecks.length),
+    note: "設定画面で監視している確認項目です。",
+    tone: "gray",
+  },
+];
