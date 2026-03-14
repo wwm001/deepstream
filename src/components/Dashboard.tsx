@@ -1,9 +1,13 @@
+import { useMemo, useState } from "react";
 import StreamCard from "./StreamCard";
 import StatusPill from "./StatusPill";
 import SectionHeader from "./SectionHeader";
 import DashboardSummary from "./DashboardSummary";
 import DashboardDetailPanel from "./DashboardDetailPanel";
 import SettingsStatusList from "./SettingsStatusList";
+import SettingsControlPanel, {
+  type SettingsFilter,
+} from "./SettingsControlPanel";
 import LibraryAssetList from "./LibraryAssetList";
 import StreamEventTimeline from "./StreamEventTimeline";
 import HomeMissionPanel from "./HomeMissionPanel";
@@ -24,6 +28,16 @@ type DashboardProps = {
 
 function Dashboard({ currentSection }: DashboardProps) {
   const section = dashboardSections[currentSection];
+  const [settingsFilter, setSettingsFilter] = useState<SettingsFilter>("all");
+  const [showSettingsNotes, setShowSettingsNotes] = useState(true);
+
+  const filteredSettingsChecks = useMemo(() => {
+    if (settingsFilter === "all") {
+      return settingsChecks;
+    }
+
+    return settingsChecks.filter((item) => item.state === settingsFilter);
+  }, [settingsFilter]);
 
   return (
     <section>
@@ -66,7 +80,21 @@ function Dashboard({ currentSection }: DashboardProps) {
       )}
 
       {currentSection === "設定" && (
-        <SettingsStatusList items={settingsChecks} />
+        <>
+          <SettingsControlPanel
+            selectedFilter={settingsFilter}
+            onSelectFilter={setSettingsFilter}
+            showNotes={showSettingsNotes}
+            onToggleNotes={() => setShowSettingsNotes((current) => !current)}
+            totalCount={settingsChecks.length}
+            filteredCount={filteredSettingsChecks.length}
+          />
+
+          <SettingsStatusList
+            items={filteredSettingsChecks}
+            showNotes={showSettingsNotes}
+          />
+        </>
       )}
 
       <div
