@@ -1,32 +1,12 @@
-import { useMemo, useState } from "react";
-import StreamCard from "./StreamCard";
-import StatusPill from "./StatusPill";
 import SectionHeader from "./SectionHeader";
+import StatusPill from "./StatusPill";
 import DashboardSummary from "./DashboardSummary";
 import DashboardDetailPanel from "./DashboardDetailPanel";
-import SettingsStatusList from "./SettingsStatusList";
-import SettingsControlPanel, {
-  type SettingsFilter,
-} from "./SettingsControlPanel";
-import LibraryAssetList from "./LibraryAssetList";
-import LibraryControlPanel, {
-  type LibraryFilter,
-} from "./LibraryControlPanel";
-import StreamEventTimeline from "./StreamEventTimeline";
-import StreamControlPanel, {
-  type StreamFilter,
-  type StreamSort,
-} from "./StreamControlPanel";
-import HomeMissionPanel from "./HomeMissionPanel";
-import SystemSnapshotPanel from "./SystemSnapshotPanel";
-import {
-  dashboardSections,
-  settingsChecks,
-  libraryAssets,
-  streamEvents,
-  homeFocusItems,
-  homeSystemSnapshotItems,
-} from "../dashboardCards";
+import HomeSectionContent from "./HomeSectionContent";
+import StreamSectionContent from "./StreamSectionContent";
+import LibrarySectionContent from "./LibrarySectionContent";
+import SettingsSectionContent from "./SettingsSectionContent";
+import { dashboardSections } from "../dashboardCards";
 import type { NavigationSection } from "../navigationItems";
 
 type DashboardProps = {
@@ -35,63 +15,21 @@ type DashboardProps = {
 
 function Dashboard({ currentSection }: DashboardProps) {
   const section = dashboardSections[currentSection];
-  const [settingsFilter, setSettingsFilter] = useState<SettingsFilter>("all");
-  const [showSettingsNotes, setShowSettingsNotes] = useState(true);
-  const [streamFilter, setStreamFilter] = useState<StreamFilter>("all");
-  const [streamSort, setStreamSort] = useState<StreamSort>("timeline");
-  const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>("all");
-  const [librarySearchTerm, setLibrarySearchTerm] = useState("");
 
-  const filteredSettingsChecks = useMemo(() => {
-    if (settingsFilter === "all") {
-      return settingsChecks;
+  const renderSectionContent = () => {
+    switch (currentSection) {
+      case "ホーム":
+        return <HomeSectionContent />;
+      case "ストリーム":
+        return <StreamSectionContent />;
+      case "ライブラリ":
+        return <LibrarySectionContent />;
+      case "設定":
+        return <SettingsSectionContent />;
+      default:
+        return null;
     }
-
-    return settingsChecks.filter((item) => item.state === settingsFilter);
-  }, [settingsFilter]);
-
-  const filteredStreamEvents = useMemo(() => {
-    const baseEvents =
-      streamFilter === "all"
-        ? streamEvents
-        : streamEvents.filter((item) => item.phase === streamFilter);
-
-    if (streamSort === "timeline") {
-      return baseEvents;
-    }
-
-    if (streamSort === "newest") {
-      return [...baseEvents].reverse();
-    }
-
-    const phaseOrder = {
-      next: 0,
-      current: 1,
-      done: 2,
-    } as const;
-
-    return [...baseEvents].sort(
-      (a, b) => phaseOrder[a.phase] - phaseOrder[b.phase]
-    );
-  }, [streamFilter, streamSort]);
-
-  const filteredLibraryAssets = useMemo(() => {
-    const normalizedSearchTerm = librarySearchTerm.trim().toLowerCase();
-
-    return libraryAssets.filter((item) => {
-      const matchesFilter =
-        libraryFilter === "all" ? true : item.state === libraryFilter;
-
-      const matchesSearch =
-        normalizedSearchTerm.length === 0
-          ? true
-          : `${item.name} ${item.role} ${item.note}`
-              .toLowerCase()
-              .includes(normalizedSearchTerm);
-
-      return matchesFilter && matchesSearch;
-    });
-  }, [libraryFilter, librarySearchTerm]);
+  };
 
   return (
     <section>
@@ -118,78 +56,7 @@ function Dashboard({ currentSection }: DashboardProps) {
         items={section.detailItems}
       />
 
-      {currentSection === "ホーム" && (
-        <>
-          <HomeMissionPanel items={homeFocusItems} />
-          <SystemSnapshotPanel items={homeSystemSnapshotItems} />
-        </>
-      )}
-
-      {currentSection === "ストリーム" && (
-        <>
-          <StreamControlPanel
-            selectedFilter={streamFilter}
-            onSelectFilter={setStreamFilter}
-            selectedSort={streamSort}
-            onSelectSort={setStreamSort}
-            totalCount={streamEvents.length}
-            filteredCount={filteredStreamEvents.length}
-          />
-
-          <StreamEventTimeline items={filteredStreamEvents} />
-        </>
-      )}
-
-      {currentSection === "ライブラリ" && (
-        <>
-          <LibraryControlPanel
-            selectedFilter={libraryFilter}
-            onSelectFilter={setLibraryFilter}
-            searchTerm={librarySearchTerm}
-            onSearchTermChange={setLibrarySearchTerm}
-            totalCount={libraryAssets.length}
-            filteredCount={filteredLibraryAssets.length}
-          />
-
-          <LibraryAssetList items={filteredLibraryAssets} />
-        </>
-      )}
-
-      {currentSection === "設定" && (
-        <>
-          <SettingsControlPanel
-            selectedFilter={settingsFilter}
-            onSelectFilter={setSettingsFilter}
-            showNotes={showSettingsNotes}
-            onToggleNotes={() => setShowSettingsNotes((current) => !current)}
-            totalCount={settingsChecks.length}
-            filteredCount={filteredSettingsChecks.length}
-          />
-
-          <SettingsStatusList
-            items={filteredSettingsChecks}
-            showNotes={showSettingsNotes}
-          />
-        </>
-      )}
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: "16px",
-          marginTop: "24px",
-        }}
-      >
-        {section.cards.map((card) => (
-          <StreamCard
-            key={card.title}
-            title={card.title}
-            description={card.description}
-            type={card.type}
-          />
-        ))}
-      </div>
+      {renderSectionContent()}
     </section>
   );
 }
