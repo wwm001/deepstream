@@ -50,6 +50,28 @@ function StreamEventTimeline({ items }: StreamEventTimelineProps) {
         Stream Timeline
       </p>
 
+      {items.length === 0 && (
+        <article
+          style={{
+            padding: "14px 16px",
+            borderRadius: "10px",
+            background: "#f9fafb",
+            border: "1px solid #f3f4f6",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: "14px",
+              lineHeight: 1.6,
+              color: "#4b5563",
+            }}
+          >
+            該当するイベントはありません。
+          </p>
+        </article>
+      )}
+
       <div
         style={{
           display: "grid",

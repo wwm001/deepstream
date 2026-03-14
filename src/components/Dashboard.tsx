@@ -10,6 +10,10 @@ import SettingsControlPanel, {
 } from "./SettingsControlPanel";
 import LibraryAssetList from "./LibraryAssetList";
 import StreamEventTimeline from "./StreamEventTimeline";
+import StreamControlPanel, {
+  type StreamFilter,
+  type StreamSort,
+} from "./StreamControlPanel";
 import HomeMissionPanel from "./HomeMissionPanel";
 import SystemSnapshotPanel from "./SystemSnapshotPanel";
 import {
@@ -30,6 +34,8 @@ function Dashboard({ currentSection }: DashboardProps) {
   const section = dashboardSections[currentSection];
   const [settingsFilter, setSettingsFilter] = useState<SettingsFilter>("all");
   const [showSettingsNotes, setShowSettingsNotes] = useState(true);
+  const [streamFilter, setStreamFilter] = useState<StreamFilter>("all");
+  const [streamSort, setStreamSort] = useState<StreamSort>("timeline");
 
   const filteredSettingsChecks = useMemo(() => {
     if (settingsFilter === "all") {
@@ -38,6 +44,31 @@ function Dashboard({ currentSection }: DashboardProps) {
 
     return settingsChecks.filter((item) => item.state === settingsFilter);
   }, [settingsFilter]);
+
+  const filteredStreamEvents = useMemo(() => {
+    const baseEvents =
+      streamFilter === "all"
+        ? streamEvents
+        : streamEvents.filter((item) => item.phase === streamFilter);
+
+    if (streamSort === "timeline") {
+      return baseEvents;
+    }
+
+    if (streamSort === "newest") {
+      return [...baseEvents].reverse();
+    }
+
+    const phaseOrder = {
+      next: 0,
+      current: 1,
+      done: 2,
+    } as const;
+
+    return [...baseEvents].sort(
+      (a, b) => phaseOrder[a.phase] - phaseOrder[b.phase]
+    );
+  }, [streamFilter, streamSort]);
 
   return (
     <section>
@@ -72,7 +103,18 @@ function Dashboard({ currentSection }: DashboardProps) {
       )}
 
       {currentSection === "ストリーム" && (
-        <StreamEventTimeline items={streamEvents} />
+        <>
+          <StreamControlPanel
+            selectedFilter={streamFilter}
+            onSelectFilter={setStreamFilter}
+            selectedSort={streamSort}
+            onSelectSort={setStreamSort}
+            totalCount={streamEvents.length}
+            filteredCount={filteredStreamEvents.length}
+          />
+
+          <StreamEventTimeline items={filteredStreamEvents} />
+        </>
       )}
 
       {currentSection === "ライブラリ" && (
