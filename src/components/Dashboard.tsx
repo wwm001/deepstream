@@ -5,10 +5,12 @@ import DashboardSummary from "./DashboardSummary";
 import DashboardDetailPanel from "./DashboardDetailPanel";
 import SettingsStatusList from "./SettingsStatusList";
 import LibraryAssetList from "./LibraryAssetList";
+import StreamEventTimeline from "./StreamEventTimeline";
 import {
   dashboardSections,
   settingsChecks,
   libraryAssets,
+  streamEvents,
 } from "../dashboardCards";
 import type { NavigationSection } from "../navigationItems";
 
@@ -43,6 +45,10 @@ function Dashboard({ currentSection }: DashboardProps) {
         title="Section Details"
         items={section.detailItems}
       />
+
+      {currentSection === "ストリーム" && (
+        <StreamEventTimeline items={streamEvents} />
+      )}
 
       {currentSection === "ライブラリ" && (
         <LibraryAssetList items={libraryAssets} />
