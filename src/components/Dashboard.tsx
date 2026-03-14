@@ -9,6 +9,9 @@ import SettingsControlPanel, {
   type SettingsFilter,
 } from "./SettingsControlPanel";
 import LibraryAssetList from "./LibraryAssetList";
+import LibraryControlPanel, {
+  type LibraryFilter,
+} from "./LibraryControlPanel";
 import StreamEventTimeline from "./StreamEventTimeline";
 import StreamControlPanel, {
   type StreamFilter,
@@ -36,6 +39,8 @@ function Dashboard({ currentSection }: DashboardProps) {
   const [showSettingsNotes, setShowSettingsNotes] = useState(true);
   const [streamFilter, setStreamFilter] = useState<StreamFilter>("all");
   const [streamSort, setStreamSort] = useState<StreamSort>("timeline");
+  const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>("all");
+  const [librarySearchTerm, setLibrarySearchTerm] = useState("");
 
   const filteredSettingsChecks = useMemo(() => {
     if (settingsFilter === "all") {
@@ -69,6 +74,24 @@ function Dashboard({ currentSection }: DashboardProps) {
       (a, b) => phaseOrder[a.phase] - phaseOrder[b.phase]
     );
   }, [streamFilter, streamSort]);
+
+  const filteredLibraryAssets = useMemo(() => {
+    const normalizedSearchTerm = librarySearchTerm.trim().toLowerCase();
+
+    return libraryAssets.filter((item) => {
+      const matchesFilter =
+        libraryFilter === "all" ? true : item.state === libraryFilter;
+
+      const matchesSearch =
+        normalizedSearchTerm.length === 0
+          ? true
+          : `${item.name} ${item.role} ${item.note}`
+              .toLowerCase()
+              .includes(normalizedSearchTerm);
+
+      return matchesFilter && matchesSearch;
+    });
+  }, [libraryFilter, librarySearchTerm]);
 
   return (
     <section>
@@ -118,7 +141,18 @@ function Dashboard({ currentSection }: DashboardProps) {
       )}
 
       {currentSection === "ライブラリ" && (
-        <LibraryAssetList items={libraryAssets} />
+        <>
+          <LibraryControlPanel
+            selectedFilter={libraryFilter}
+            onSelectFilter={setLibraryFilter}
+            searchTerm={librarySearchTerm}
+            onSearchTermChange={setLibrarySearchTerm}
+            totalCount={libraryAssets.length}
+            filteredCount={filteredLibraryAssets.length}
+          />
+
+          <LibraryAssetList items={filteredLibraryAssets} />
+        </>
       )}
 
       {currentSection === "設定" && (
