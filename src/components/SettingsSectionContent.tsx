@@ -1,32 +1,39 @@
-import { useMemo, useState } from "react";
 import SettingsStatusList from "./SettingsStatusList";
 import SettingsControlPanel, {
   type SettingsFilter,
 } from "./SettingsControlPanel";
 import DashboardCardGrid from "./DashboardCardGrid";
 import DashboardSectionStack from "./DashboardSectionStack";
-import { dashboardSections, settingsChecks } from "../dashboardCards";
+import {
+  dashboardSections,
+  settingsChecks,
+  type SettingCheck,
+} from "../data/dashboard";
 
-function SettingsSectionContent() {
+type SettingsSectionContentProps = {
+  settingsFilter: SettingsFilter;
+  onSettingsFilterChange: (filter: SettingsFilter) => void;
+  showSettingsNotes: boolean;
+  onToggleSettingsNotes: () => void;
+  filteredSettingsChecks: SettingCheck[];
+};
+
+function SettingsSectionContent({
+  settingsFilter,
+  onSettingsFilterChange,
+  showSettingsNotes,
+  onToggleSettingsNotes,
+  filteredSettingsChecks,
+}: SettingsSectionContentProps) {
   const section = dashboardSections["設定"];
-  const [settingsFilter, setSettingsFilter] = useState<SettingsFilter>("all");
-  const [showSettingsNotes, setShowSettingsNotes] = useState(true);
-
-  const filteredSettingsChecks = useMemo(() => {
-    if (settingsFilter === "all") {
-      return settingsChecks;
-    }
-
-    return settingsChecks.filter((item) => item.state === settingsFilter);
-  }, [settingsFilter]);
 
   return (
     <DashboardSectionStack>
       <SettingsControlPanel
         selectedFilter={settingsFilter}
-        onSelectFilter={setSettingsFilter}
+        onSelectFilter={onSettingsFilterChange}
         showNotes={showSettingsNotes}
-        onToggleNotes={() => setShowSettingsNotes((current) => !current)}
+        onToggleNotes={onToggleSettingsNotes}
         totalCount={settingsChecks.length}
         filteredCount={filteredSettingsChecks.length}
       />

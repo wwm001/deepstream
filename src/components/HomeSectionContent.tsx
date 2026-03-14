@@ -5,16 +5,20 @@ import DashboardSectionStack from "./DashboardSectionStack";
 import {
   dashboardSections,
   homeFocusItems,
-  homeSystemSnapshotItems,
-} from "../dashboardCards";
+  type DashboardSnapshotItem,
+} from "../data/dashboard";
 
-function HomeSectionContent() {
+type HomeSectionContentProps = {
+  snapshotItems: DashboardSnapshotItem[];
+};
+
+function HomeSectionContent({ snapshotItems }: HomeSectionContentProps) {
   const section = dashboardSections["ホーム"];
 
   return (
     <DashboardSectionStack>
       <HomeMissionPanel items={homeFocusItems} />
-      <SystemSnapshotPanel items={homeSystemSnapshotItems} />
+      <SystemSnapshotPanel items={snapshotItems} />
       <DashboardCardGrid cards={section.cards} />
     </DashboardSectionStack>
   );
