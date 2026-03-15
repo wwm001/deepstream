@@ -1,6 +1,7 @@
 import LibraryAssetList from "./LibraryAssetList";
 import LibraryControlPanel, {
   type LibraryFilter,
+  type LibrarySort,
 } from "./LibraryControlPanel";
 import DashboardCardGrid from "./DashboardCardGrid";
 import DashboardSectionStack from "./DashboardSectionStack";
@@ -13,6 +14,8 @@ import {
 type LibrarySectionContentProps = {
   libraryFilter: LibraryFilter;
   onLibraryFilterChange: (filter: LibraryFilter) => void;
+  librarySort: LibrarySort;
+  onLibrarySortChange: (sort: LibrarySort) => void;
   librarySearchTerm: string;
   onLibrarySearchTermChange: (value: string) => void;
   filteredLibraryAssets: LibraryAsset[];
@@ -21,6 +24,8 @@ type LibrarySectionContentProps = {
 function LibrarySectionContent({
   libraryFilter,
   onLibraryFilterChange,
+  librarySort,
+  onLibrarySortChange,
   librarySearchTerm,
   onLibrarySearchTermChange,
   filteredLibraryAssets,
@@ -32,6 +37,8 @@ function LibrarySectionContent({
       <LibraryControlPanel
         selectedFilter={libraryFilter}
         onSelectFilter={onLibraryFilterChange}
+        selectedSort={librarySort}
+        onSelectSort={onLibrarySortChange}
         searchTerm={librarySearchTerm}
         onSearchTermChange={onLibrarySearchTermChange}
         totalCount={libraryAssets.length}

@@ -1,10 +1,13 @@
-import type { LibraryAsset } from "../dashboardCards";
+import type { LibraryAsset } from "../data/dashboard";
 
 export type LibraryFilter = "all" | LibraryAsset["state"];
+export type LibrarySort = "name" | "state";
 
 type LibraryControlPanelProps = {
   selectedFilter: LibraryFilter;
   onSelectFilter: (filter: LibraryFilter) => void;
+  selectedSort: LibrarySort;
+  onSelectSort: (sort: LibrarySort) => void;
   searchTerm: string;
   onSearchTermChange: (value: string) => void;
   totalCount: number;
@@ -18,9 +21,16 @@ const filterOptions: Array<{ value: LibraryFilter; label: string }> = [
   { value: "next", label: "next" },
 ];
 
+const sortOptions: Array<{ value: LibrarySort; label: string }> = [
+  { value: "name", label: "name" },
+  { value: "state", label: "state" },
+];
+
 function LibraryControlPanel({
   selectedFilter,
   onSelectFilter,
+  selectedSort,
+  onSelectSort,
   searchTerm,
   onSearchTermChange,
   totalCount,
@@ -138,6 +148,54 @@ function LibraryControlPanel({
                 type="button"
                 aria-pressed={active}
                 onClick={() => onSelectFilter(option.value)}
+                style={{
+                  border: active ? "none" : "1px solid #d1d5db",
+                  background: active ? "#111827" : "#f9fafb",
+                  color: active ? "#ffffff" : "#111827",
+                  borderRadius: "999px",
+                  padding: "8px 12px",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                }}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{ marginTop: "16px" }}>
+        <p
+          style={{
+            margin: "0 0 10px 0",
+            fontSize: "11px",
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: "#6b7280",
+          }}
+        >
+          Sort
+        </p>
+
+        <div
+          style={{
+            display: "flex",
+            gap: "10px",
+            flexWrap: "wrap",
+          }}
+        >
+          {sortOptions.map((option) => {
+            const active = selectedSort === option.value;
+
+            return (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={active}
+                onClick={() => onSelectSort(option.value)}
                 style={{
                   border: active ? "none" : "1px solid #d1d5db",
                   background: active ? "#111827" : "#f9fafb",

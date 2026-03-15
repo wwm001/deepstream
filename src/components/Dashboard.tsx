@@ -18,7 +18,7 @@ import {
 } from "../data/dashboard";
 import type { NavigationSection } from "../navigationItems";
 import type { StreamFilter, StreamSort } from "./StreamControlPanel";
-import type { LibraryFilter } from "./LibraryControlPanel";
+import type { LibraryFilter, LibrarySort } from "./LibraryControlPanel";
 import type { SettingsFilter } from "./SettingsControlPanel";
 
 type DashboardProps = {
@@ -32,6 +32,7 @@ function Dashboard({ currentSection }: DashboardProps) {
   const [streamSort, setStreamSort] = useState<StreamSort>("timeline");
 
   const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>("all");
+  const [librarySort, setLibrarySort] = useState<LibrarySort>("name");
   const [librarySearchTerm, setLibrarySearchTerm] = useState("");
 
   const [settingsFilter, setSettingsFilter] = useState<SettingsFilter>("all");
@@ -65,7 +66,7 @@ function Dashboard({ currentSection }: DashboardProps) {
   const filteredLibraryAssets = useMemo(() => {
     const normalizedSearchTerm = librarySearchTerm.trim().toLowerCase();
 
-    return libraryAssets.filter((item) => {
+    const baseAssets = libraryAssets.filter((item) => {
       const matchesFilter =
         libraryFilter === "all" ? true : item.state === libraryFilter;
 
@@ -78,7 +79,27 @@ function Dashboard({ currentSection }: DashboardProps) {
 
       return matchesFilter && matchesSearch;
     });
-  }, [libraryFilter, librarySearchTerm]);
+
+    if (librarySort === "name") {
+      return [...baseAssets].sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    const stateOrder = {
+      stable: 0,
+      active: 1,
+      next: 2,
+    } as const;
+
+    return [...baseAssets].sort((a, b) => {
+      const stateDiff = stateOrder[a.state] - stateOrder[b.state];
+
+      if (stateDiff !== 0) {
+        return stateDiff;
+      }
+
+      return a.name.localeCompare(b.name);
+    });
+  }, [libraryFilter, librarySearchTerm, librarySort]);
 
   const filteredSettingsChecks = useMemo(() => {
     if (settingsFilter === "all") {
@@ -107,8 +128,8 @@ function Dashboard({ currentSection }: DashboardProps) {
         value: String(filteredLibraryAssets.length),
         note:
           librarySearchTerm.trim().length > 0
-            ? `検索語「${librarySearchTerm}」とフィルター ${libraryFilter} の結果件数です。`
-            : `ライブラリの現在フィルター ${libraryFilter} による表示件数です。`,
+            ? `検索語「${librarySearchTerm}」・フィルター ${libraryFilter}・並び順 ${librarySort} の結果件数です。`
+            : `ライブラリの現在フィルター ${libraryFilter}、並び順 ${librarySort} による表示件数です。`,
         tone: "gray",
       },
       {
@@ -130,6 +151,7 @@ function Dashboard({ currentSection }: DashboardProps) {
       filteredSettingsChecks.length,
       libraryFilter,
       librarySearchTerm,
+      librarySort,
       settingsFilter,
       showSettingsNotes,
       streamFilter,
@@ -156,6 +178,8 @@ function Dashboard({ currentSection }: DashboardProps) {
           <LibrarySectionContent
             libraryFilter={libraryFilter}
             onLibraryFilterChange={setLibraryFilter}
+            librarySort={librarySort}
+            onLibrarySortChange={setLibrarySort}
             librarySearchTerm={librarySearchTerm}
             onLibrarySearchTermChange={setLibrarySearchTerm}
             filteredLibraryAssets={filteredLibraryAssets}
