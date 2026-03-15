@@ -1,8 +1,10 @@
+import { useMemo } from "react";
 import LibraryAssetList from "./LibraryAssetList";
 import LibraryControlPanel, {
   type LibraryFilter,
   type LibrarySort,
 } from "./LibraryControlPanel";
+import LibraryStateSummary from "./LibraryStateSummary";
 import DashboardCardGrid from "./DashboardCardGrid";
 import DashboardSectionStack from "./DashboardSectionStack";
 import {
@@ -32,8 +34,23 @@ function LibrarySectionContent({
 }: LibrarySectionContentProps) {
   const section = dashboardSections["ライブラリ"];
 
+  const summaryCounts = useMemo(
+    () => ({
+      stableCount: libraryAssets.filter((item) => item.state === "stable").length,
+      activeCount: libraryAssets.filter((item) => item.state === "active").length,
+      nextCount: libraryAssets.filter((item) => item.state === "next").length,
+    }),
+    []
+  );
+
   return (
     <DashboardSectionStack>
+      <LibraryStateSummary
+        stableCount={summaryCounts.stableCount}
+        activeCount={summaryCounts.activeCount}
+        nextCount={summaryCounts.nextCount}
+      />
+
       <LibraryControlPanel
         selectedFilter={libraryFilter}
         onSelectFilter={onLibraryFilterChange}
