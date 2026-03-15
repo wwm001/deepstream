@@ -109,8 +109,41 @@ function Dashboard({ currentSection }: DashboardProps) {
     return settingsChecks.filter((item) => item.state === settingsFilter);
   }, [settingsFilter]);
 
+  const streamPhaseCounts = useMemo(
+    () => ({
+      done: streamEvents.filter((item) => item.phase === "done").length,
+      current: streamEvents.filter((item) => item.phase === "current").length,
+      next: streamEvents.filter((item) => item.phase === "next").length,
+    }),
+    []
+  );
+
+  const settingsStateCounts = useMemo(
+    () => ({
+      ok: settingsChecks.filter((item) => item.state === "ok").length,
+      watch: settingsChecks.filter((item) => item.state === "watch").length,
+      next: settingsChecks.filter((item) => item.state === "next").length,
+    }),
+    []
+  );
+
+  const libraryStateCounts = useMemo(
+    () => ({
+      stable: libraryAssets.filter((item) => item.state === "stable").length,
+      active: libraryAssets.filter((item) => item.state === "active").length,
+      next: libraryAssets.filter((item) => item.state === "next").length,
+    }),
+    []
+  );
+
   const homeSystemSnapshotItems = useMemo<DashboardSnapshotItem[]>(
     () => [
+      {
+        label: "Active Section",
+        value: currentSection,
+        note: `現在表示中のセクションは「${currentSection}」です。ホームは司令室、他3画面は操作盤として機能します。`,
+        tone: "indigo",
+      },
       {
         label: "Sections",
         value: String(totalSections),
@@ -128,34 +161,38 @@ function Dashboard({ currentSection }: DashboardProps) {
         value: String(filteredLibraryAssets.length),
         note:
           librarySearchTerm.trim().length > 0
-            ? `検索語「${librarySearchTerm}」・フィルター ${libraryFilter}・並び順 ${librarySort} の結果件数です。`
-            : `ライブラリの現在フィルター ${libraryFilter}、並び順 ${librarySort} による表示件数です。`,
+            ? `検索語「${librarySearchTerm}」・フィルター ${libraryFilter}・並び順 ${librarySort} の結果件数です。全体は stable ${libraryStateCounts.stable} / active ${libraryStateCounts.active} / next ${libraryStateCounts.next}。`
+            : `ライブラリの現在フィルター ${libraryFilter}、並び順 ${librarySort} による表示件数です。全体は stable ${libraryStateCounts.stable} / active ${libraryStateCounts.active} / next ${libraryStateCounts.next}。`,
         tone: "gray",
       },
       {
         label: "Stream View",
         value: String(filteredStreamEvents.length),
-        note: `ストリームの現在フィルター ${streamFilter} / 並び順 ${streamSort} の結果件数です。`,
+        note: `ストリームの現在フィルター ${streamFilter} / 並び順 ${streamSort} の結果件数です。全体は done ${streamPhaseCounts.done} / current ${streamPhaseCounts.current} / next ${streamPhaseCounts.next}。`,
         tone: "amber",
       },
       {
         label: "Settings View",
         value: String(filteredSettingsChecks.length),
-        note: `設定の現在フィルター ${settingsFilter}、ノート表示 ${showSettingsNotes ? "on" : "off"} の結果件数です。`,
+        note: `設定の現在フィルター ${settingsFilter}、ノート表示 ${showSettingsNotes ? "on" : "off"} の結果件数です。全体は ok ${settingsStateCounts.ok} / watch ${settingsStateCounts.watch} / next ${settingsStateCounts.next}。`,
         tone: "gray",
       },
     ],
     [
+      currentSection,
       filteredLibraryAssets.length,
       filteredStreamEvents.length,
       filteredSettingsChecks.length,
       libraryFilter,
       librarySearchTerm,
       librarySort,
-      settingsFilter,
       showSettingsNotes,
+      settingsFilter,
       streamFilter,
       streamSort,
+      libraryStateCounts,
+      streamPhaseCounts,
+      settingsStateCounts,
     ]
   );
 
