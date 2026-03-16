@@ -9,6 +9,7 @@ import type {
 } from "../components/StreamControlPanel";
 
 const STORAGE_KEY = "deepstream:stream-events";
+const USER_EVENT_PREFIX = "stream-user-";
 
 type NewStreamEventInput = {
   title: string;
@@ -134,6 +135,11 @@ export function useStreamState() {
     [events]
   );
 
+  const userCreatedEventCount = useMemo(
+    () => events.filter((item) => item.id.startsWith(USER_EVENT_PREFIX)).length,
+    [events]
+  );
+
   const addStreamEvent = ({ title, detail, phase }: NewStreamEventInput) => {
     const trimmedTitle = title.trim();
     const trimmedDetail = detail.trim();
@@ -143,7 +149,7 @@ export function useStreamState() {
     }
 
     const newEvent: StreamEvent = {
-      id: `stream-user-${Date.now()}-${Math.random()
+      id: `${USER_EVENT_PREFIX}${Date.now()}-${Math.random()
         .toString(36)
         .slice(2, 8)}`,
       title: trimmedTitle,
@@ -166,6 +172,7 @@ export function useStreamState() {
     events,
     filteredStreamEvents,
     phaseCounts,
+    userCreatedEventCount,
     addStreamEvent,
     removeStreamEvent,
   };

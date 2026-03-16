@@ -9,6 +9,7 @@ import type {
 } from "../components/LibraryControlPanel";
 
 const STORAGE_KEY = "deepstream:library-state";
+const USER_ASSET_PREFIX = "library-user-";
 
 type StoredLibraryState = {
   items: LibraryAsset[];
@@ -203,6 +204,12 @@ export function useLibraryState() {
     [libraryItems]
   );
 
+  const userCreatedAssetCount = useMemo(
+    () =>
+      libraryItems.filter((item) => item.id.startsWith(USER_ASSET_PREFIX)).length,
+    [libraryItems]
+  );
+
   const addLibraryAsset = ({
     name,
     role,
@@ -218,7 +225,7 @@ export function useLibraryState() {
     }
 
     const newAsset: LibraryAsset = {
-      id: `library-user-${Date.now()}-${Math.random()
+      id: `${USER_ASSET_PREFIX}${Date.now()}-${Math.random()
         .toString(36)
         .slice(2, 8)}`,
       name: trimmedName,
@@ -244,6 +251,7 @@ export function useLibraryState() {
     setLibrarySearchTerm,
     filteredLibraryAssets,
     summaryCounts,
+    userCreatedAssetCount,
     addLibraryAsset,
     removeLibraryAsset,
   };

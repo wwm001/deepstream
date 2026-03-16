@@ -33,6 +33,7 @@ function Dashboard({ currentSection }: DashboardProps) {
     events,
     filteredStreamEvents,
     phaseCounts,
+    userCreatedEventCount,
     addStreamEvent,
     removeStreamEvent,
   } = useStreamState();
@@ -58,6 +59,7 @@ function Dashboard({ currentSection }: DashboardProps) {
     setLibrarySearchTerm,
     filteredLibraryAssets,
     summaryCounts: libraryStateCounts,
+    userCreatedAssetCount,
     addLibraryAsset,
     removeLibraryAsset,
   } = useLibraryState();
@@ -81,6 +83,18 @@ function Dashboard({ currentSection }: DashboardProps) {
         value: String(totalDashboardCards),
         note: "全セクションを合計した表示カード数です。",
         tone: "green",
+      },
+      {
+        label: "User Events",
+        value: String(userCreatedEventCount),
+        note: `ユーザーが追加したストリームイベント数です。全イベント総数は ${events.length} 件です。`,
+        tone: "amber",
+      },
+      {
+        label: "User Assets",
+        value: String(userCreatedAssetCount),
+        note: `ユーザーが追加したライブラリアセット数です。全アセット総数は ${libraryItems.length} 件です。`,
+        tone: "gray",
       },
       {
         label: "Library View",
@@ -119,6 +133,8 @@ function Dashboard({ currentSection }: DashboardProps) {
       settingsItems.length,
       streamFilter,
       streamSort,
+      userCreatedAssetCount,
+      userCreatedEventCount,
       libraryStateCounts,
       phaseCounts,
       settingsStateCounts,
