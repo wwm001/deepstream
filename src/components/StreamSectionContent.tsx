@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import StreamEventForm from "./StreamEventForm";
 import StreamEventTimeline from "./StreamEventTimeline";
 import StreamControlPanel, {
   type StreamFilter,
@@ -7,11 +7,7 @@ import StreamControlPanel, {
 import StreamPhaseSummary from "./StreamPhaseSummary";
 import DashboardCardGrid from "./DashboardCardGrid";
 import DashboardSectionStack from "./DashboardSectionStack";
-import {
-  dashboardSections,
-  streamEvents,
-  type StreamEvent,
-} from "../data/dashboard";
+import { dashboardSections, type StreamEvent } from "../data/dashboard";
 
 type StreamSectionContentProps = {
   streamFilter: StreamFilter;
@@ -19,6 +15,18 @@ type StreamSectionContentProps = {
   streamSort: StreamSort;
   onStreamSortChange: (sort: StreamSort) => void;
   filteredStreamEvents: StreamEvent[];
+  totalStreamEvents: number;
+  phaseCounts: {
+    doneCount: number;
+    currentCount: number;
+    nextCount: number;
+  };
+  onAddStreamEvent: (input: {
+    title: string;
+    detail: string;
+    phase: StreamEvent["phase"];
+  }) => void;
+  onRemoveStreamEvent: (eventId: string) => void;
 };
 
 function StreamSectionContent({
@@ -27,36 +35,36 @@ function StreamSectionContent({
   streamSort,
   onStreamSortChange,
   filteredStreamEvents,
+  totalStreamEvents,
+  phaseCounts,
+  onAddStreamEvent,
+  onRemoveStreamEvent,
 }: StreamSectionContentProps) {
   const section = dashboardSections["ストリーム"];
-
-  const summaryCounts = useMemo(
-    () => ({
-      doneCount: streamEvents.filter((item) => item.phase === "done").length,
-      currentCount: streamEvents.filter((item) => item.phase === "current").length,
-      nextCount: streamEvents.filter((item) => item.phase === "next").length,
-    }),
-    []
-  );
 
   return (
     <DashboardSectionStack>
       <StreamPhaseSummary
-        doneCount={summaryCounts.doneCount}
-        currentCount={summaryCounts.currentCount}
-        nextCount={summaryCounts.nextCount}
+        doneCount={phaseCounts.doneCount}
+        currentCount={phaseCounts.currentCount}
+        nextCount={phaseCounts.nextCount}
       />
+
+      <StreamEventForm onAddEvent={onAddStreamEvent} />
 
       <StreamControlPanel
         selectedFilter={streamFilter}
         onSelectFilter={onStreamFilterChange}
         selectedSort={streamSort}
         onSelectSort={onStreamSortChange}
-        totalCount={streamEvents.length}
+        totalCount={totalStreamEvents}
         filteredCount={filteredStreamEvents.length}
       />
 
-      <StreamEventTimeline items={filteredStreamEvents} />
+      <StreamEventTimeline
+        items={filteredStreamEvents}
+        onRemoveEvent={onRemoveStreamEvent}
+      />
 
       <DashboardCardGrid cards={section.cards} />
     </DashboardSectionStack>

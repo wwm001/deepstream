@@ -1,7 +1,8 @@
-import type { SettingCheck } from "../dashboardCards";
+import type { SettingCheck } from "../data/dashboard";
 
 type SettingsStatusListProps = {
   items: SettingCheck[];
+  showNotes: boolean;
 };
 
 const stateStyles: Record<
@@ -22,11 +23,10 @@ const stateStyles: Record<
   },
 };
 
-function SettingsStatusList({ items }: SettingsStatusListProps) {
+function SettingsStatusList({ items, showNotes }: SettingsStatusListProps) {
   return (
     <section
       style={{
-        marginTop: "20px",
         padding: "18px",
         borderRadius: "12px",
         background: "#ffffff",
@@ -53,6 +53,28 @@ function SettingsStatusList({ items }: SettingsStatusListProps) {
           gap: "12px",
         }}
       >
+        {items.length === 0 && (
+          <article
+            style={{
+              padding: "14px 16px",
+              borderRadius: "10px",
+              background: "#f9fafb",
+              border: "1px solid #f3f4f6",
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: "14px",
+                lineHeight: 1.6,
+                color: "#4b5563",
+              }}
+            >
+              該当するチェック項目はありません。
+            </p>
+          </article>
+        )}
+
         {items.map((item) => {
           const stateStyle = stateStyles[item.state];
 
@@ -118,16 +140,18 @@ function SettingsStatusList({ items }: SettingsStatusListProps) {
                 </span>
               </div>
 
-              <p
-                style={{
-                  margin: "10px 0 0 0",
-                  color: "#4b5563",
-                  lineHeight: 1.6,
-                  fontSize: "14px",
-                }}
-              >
-                {item.note}
-              </p>
+              {showNotes && (
+                <p
+                  style={{
+                    margin: "10px 0 0 0",
+                    color: "#4b5563",
+                    lineHeight: 1.6,
+                    fontSize: "14px",
+                  }}
+                >
+                  {item.note}
+                </p>
+              )}
             </article>
           );
         })}
