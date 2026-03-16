@@ -11,15 +11,14 @@ import {
   dashboardSections,
   libraryAssets,
   settingsChecks,
-  streamEvents,
   totalDashboardCards,
   totalSections,
   type DashboardSnapshotItem,
 } from "../data/dashboard";
 import type { NavigationSection } from "../navigationItems";
-import type { StreamFilter, StreamSort } from "./StreamControlPanel";
 import type { LibraryFilter, LibrarySort } from "./LibraryControlPanel";
 import type { SettingsFilter } from "./SettingsControlPanel";
+import { useStreamState } from "../hooks/useStreamState";
 
 type DashboardProps = {
   currentSection: NavigationSection;
@@ -28,8 +27,17 @@ type DashboardProps = {
 function Dashboard({ currentSection }: DashboardProps) {
   const section = dashboardSections[currentSection];
 
-  const [streamFilter, setStreamFilter] = useState<StreamFilter>("all");
-  const [streamSort, setStreamSort] = useState<StreamSort>("timeline");
+  const {
+    streamFilter,
+    setStreamFilter,
+    streamSort,
+    setStreamSort,
+    events,
+    filteredStreamEvents,
+    phaseCounts,
+    addStreamEvent,
+    removeStreamEvent,
+  } = useStreamState();
 
   const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>("all");
   const [librarySort, setLibrarySort] = useState<LibrarySort>("name");
@@ -37,31 +45,6 @@ function Dashboard({ currentSection }: DashboardProps) {
 
   const [settingsFilter, setSettingsFilter] = useState<SettingsFilter>("all");
   const [showSettingsNotes, setShowSettingsNotes] = useState(true);
-
-  const filteredStreamEvents = useMemo(() => {
-    const baseEvents =
-      streamFilter === "all"
-        ? streamEvents
-        : streamEvents.filter((item) => item.phase === streamFilter);
-
-    if (streamSort === "timeline") {
-      return baseEvents;
-    }
-
-    if (streamSort === "newest") {
-      return [...baseEvents].reverse();
-    }
-
-    const phaseOrder = {
-      next: 0,
-      current: 1,
-      done: 2,
-    } as const;
-
-    return [...baseEvents].sort(
-      (a, b) => phaseOrder[a.phase] - phaseOrder[b.phase]
-    );
-  }, [streamFilter, streamSort]);
 
   const filteredLibraryAssets = useMemo(() => {
     const normalizedSearchTerm = librarySearchTerm.trim().toLowerCase();
@@ -108,15 +91,6 @@ function Dashboard({ currentSection }: DashboardProps) {
 
     return settingsChecks.filter((item) => item.state === settingsFilter);
   }, [settingsFilter]);
-
-  const streamPhaseCounts = useMemo(
-    () => ({
-      done: streamEvents.filter((item) => item.phase === "done").length,
-      current: streamEvents.filter((item) => item.phase === "current").length,
-      next: streamEvents.filter((item) => item.phase === "next").length,
-    }),
-    []
-  );
 
   const settingsStateCounts = useMemo(
     () => ({
@@ -168,7 +142,7 @@ function Dashboard({ currentSection }: DashboardProps) {
       {
         label: "Stream View",
         value: String(filteredStreamEvents.length),
-        note: `ストリームの現在フィルター ${streamFilter} / 並び順 ${streamSort} の結果件数です。全体は done ${streamPhaseCounts.done} / current ${streamPhaseCounts.current} / next ${streamPhaseCounts.next}。`,
+        note: `ストリームの現在フィルター ${streamFilter} / 並び順 ${streamSort} の結果件数です。全体は done ${phaseCounts.doneCount} / current ${phaseCounts.currentCount} / next ${phaseCounts.nextCount} / total ${events.length}。`,
         tone: "amber",
       },
       {
@@ -180,6 +154,7 @@ function Dashboard({ currentSection }: DashboardProps) {
     ],
     [
       currentSection,
+      events.length,
       filteredLibraryAssets.length,
       filteredStreamEvents.length,
       filteredSettingsChecks.length,
@@ -191,7 +166,7 @@ function Dashboard({ currentSection }: DashboardProps) {
       streamFilter,
       streamSort,
       libraryStateCounts,
-      streamPhaseCounts,
+      phaseCounts,
       settingsStateCounts,
     ]
   );
@@ -208,6 +183,10 @@ function Dashboard({ currentSection }: DashboardProps) {
             streamSort={streamSort}
             onStreamSortChange={setStreamSort}
             filteredStreamEvents={filteredStreamEvents}
+            totalStreamEvents={events.length}
+            phaseCounts={phaseCounts}
+            onAddStreamEvent={addStreamEvent}
+            onRemoveStreamEvent={removeStreamEvent}
           />
         );
       case "ライブラリ":

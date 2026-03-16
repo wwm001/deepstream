@@ -29,6 +29,7 @@ export type LibraryAsset = {
 };
 
 export type StreamEvent = {
+  id: string;
   title: string;
   detail: string;
   phase: "done" | "current" | "next";
