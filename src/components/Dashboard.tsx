@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import SectionHeader from "./SectionHeader";
 import StatusPill from "./StatusPill";
 import DashboardSummary from "./DashboardSummary";
@@ -9,15 +9,14 @@ import LibrarySectionContent from "./LibrarySectionContent";
 import SettingsSectionContent from "./SettingsSectionContent";
 import {
   dashboardSections,
-  libraryAssets,
   totalDashboardCards,
   totalSections,
   type DashboardSnapshotItem,
 } from "../data/dashboard";
 import type { NavigationSection } from "../navigationItems";
-import type { LibraryFilter, LibrarySort } from "./LibraryControlPanel";
 import { useStreamState } from "../hooks/useStreamState";
 import { useSettingsState } from "../hooks/useSettingsState";
+import { useLibraryState } from "../hooks/useLibraryState";
 
 type DashboardProps = {
   currentSection: NavigationSection;
@@ -49,56 +48,19 @@ function Dashboard({ currentSection }: DashboardProps) {
     cycleSettingState,
   } = useSettingsState();
 
-  const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>("all");
-  const [librarySort, setLibrarySort] = useState<LibrarySort>("name");
-  const [librarySearchTerm, setLibrarySearchTerm] = useState("");
-
-  const filteredLibraryAssets = useMemo(() => {
-    const normalizedSearchTerm = librarySearchTerm.trim().toLowerCase();
-
-    const baseAssets = libraryAssets.filter((item) => {
-      const matchesFilter =
-        libraryFilter === "all" ? true : item.state === libraryFilter;
-
-      const matchesSearch =
-        normalizedSearchTerm.length === 0
-          ? true
-          : `${item.name} ${item.role} ${item.note}`
-              .toLowerCase()
-              .includes(normalizedSearchTerm);
-
-      return matchesFilter && matchesSearch;
-    });
-
-    if (librarySort === "name") {
-      return [...baseAssets].sort((a, b) => a.name.localeCompare(b.name));
-    }
-
-    const stateOrder = {
-      stable: 0,
-      active: 1,
-      next: 2,
-    } as const;
-
-    return [...baseAssets].sort((a, b) => {
-      const stateDiff = stateOrder[a.state] - stateOrder[b.state];
-
-      if (stateDiff !== 0) {
-        return stateDiff;
-      }
-
-      return a.name.localeCompare(b.name);
-    });
-  }, [libraryFilter, librarySearchTerm, librarySort]);
-
-  const libraryStateCounts = useMemo(
-    () => ({
-      stable: libraryAssets.filter((item) => item.state === "stable").length,
-      active: libraryAssets.filter((item) => item.state === "active").length,
-      next: libraryAssets.filter((item) => item.state === "next").length,
-    }),
-    []
-  );
+  const {
+    libraryItems,
+    libraryFilter,
+    setLibraryFilter,
+    librarySort,
+    setLibrarySort,
+    librarySearchTerm,
+    setLibrarySearchTerm,
+    filteredLibraryAssets,
+    summaryCounts: libraryStateCounts,
+    addLibraryAsset,
+    removeLibraryAsset,
+  } = useLibraryState();
 
   const homeSystemSnapshotItems = useMemo<DashboardSnapshotItem[]>(
     () => [
@@ -125,8 +87,8 @@ function Dashboard({ currentSection }: DashboardProps) {
         value: String(filteredLibraryAssets.length),
         note:
           librarySearchTerm.trim().length > 0
-            ? `検索語「${librarySearchTerm}」・フィルター ${libraryFilter}・並び順 ${librarySort} の結果件数です。全体は stable ${libraryStateCounts.stable} / active ${libraryStateCounts.active} / next ${libraryStateCounts.next}。`
-            : `ライブラリの現在フィルター ${libraryFilter}、並び順 ${librarySort} による表示件数です。全体は stable ${libraryStateCounts.stable} / active ${libraryStateCounts.active} / next ${libraryStateCounts.next}。`,
+            ? `検索語「${librarySearchTerm}」・フィルター ${libraryFilter}・並び順 ${librarySort} の結果件数です。全体は stable ${libraryStateCounts.stableCount} / active ${libraryStateCounts.activeCount} / next ${libraryStateCounts.nextCount} / total ${libraryItems.length}。`
+            : `ライブラリの現在フィルター ${libraryFilter}、並び順 ${librarySort} による表示件数です。全体は stable ${libraryStateCounts.stableCount} / active ${libraryStateCounts.activeCount} / next ${libraryStateCounts.nextCount} / total ${libraryItems.length}。`,
         tone: "gray",
       },
       {
@@ -149,6 +111,7 @@ function Dashboard({ currentSection }: DashboardProps) {
       filteredStreamEvents.length,
       filteredSettingsChecks.length,
       libraryFilter,
+      libraryItems.length,
       librarySearchTerm,
       librarySort,
       showSettingsNotes,
@@ -190,6 +153,10 @@ function Dashboard({ currentSection }: DashboardProps) {
             librarySearchTerm={librarySearchTerm}
             onLibrarySearchTermChange={setLibrarySearchTerm}
             filteredLibraryAssets={filteredLibraryAssets}
+            totalLibraryAssets={libraryItems.length}
+            summaryCounts={libraryStateCounts}
+            onAddLibraryAsset={addLibraryAsset}
+            onRemoveLibraryAsset={removeLibraryAsset}
           />
         );
       case "設定":

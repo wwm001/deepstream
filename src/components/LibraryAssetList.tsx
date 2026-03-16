@@ -1,7 +1,8 @@
-import type { LibraryAsset } from "../dashboardCards";
+import type { LibraryAsset } from "../data/dashboard";
 
 type LibraryAssetListProps = {
   items: LibraryAsset[];
+  onRemoveAsset: (assetId: string) => void;
 };
 
 const stateStyles: Record<
@@ -22,11 +23,13 @@ const stateStyles: Record<
   },
 };
 
-function LibraryAssetList({ items }: LibraryAssetListProps) {
+function LibraryAssetList({
+  items,
+  onRemoveAsset,
+}: LibraryAssetListProps) {
   return (
     <section
       style={{
-        marginTop: "20px",
         padding: "18px",
         borderRadius: "12px",
         background: "#ffffff",
@@ -47,6 +50,28 @@ function LibraryAssetList({ items }: LibraryAssetListProps) {
         Component Assets
       </p>
 
+      {items.length === 0 && (
+        <article
+          style={{
+            padding: "14px 16px",
+            borderRadius: "10px",
+            background: "#f9fafb",
+            border: "1px solid #f3f4f6",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: "14px",
+              lineHeight: 1.6,
+              color: "#4b5563",
+            }}
+          >
+            該当する資産はありません。
+          </p>
+        </article>
+      )}
+
       <div
         style={{
           display: "grid",
@@ -59,7 +84,7 @@ function LibraryAssetList({ items }: LibraryAssetListProps) {
 
           return (
             <article
-              key={item.name}
+              key={item.id}
               style={{
                 padding: "14px 16px",
                 borderRadius: "10px",
@@ -86,21 +111,49 @@ function LibraryAssetList({ items }: LibraryAssetListProps) {
                   {item.name}
                 </h3>
 
-                <span
+                <div
                   style={{
-                    display: "inline-block",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                    color: stateStyle.color,
-                    background: stateStyle.background,
-                    padding: "4px 8px",
-                    borderRadius: "999px",
+                    display: "flex",
+                    gap: "8px",
+                    flexWrap: "wrap",
+                    alignItems: "center",
                   }}
                 >
-                  {item.state}
-                </span>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      color: stateStyle.color,
+                      background: stateStyle.background,
+                      padding: "4px 8px",
+                      borderRadius: "999px",
+                    }}
+                  >
+                    {item.state}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => onRemoveAsset(item.id)}
+                    style={{
+                      border: "1px solid #d1d5db",
+                      background: "#ffffff",
+                      color: "#111827",
+                      borderRadius: "999px",
+                      padding: "4px 8px",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      cursor: "pointer",
+                    }}
+                  >
+                    delete
+                  </button>
+                </div>
               </div>
 
               <p

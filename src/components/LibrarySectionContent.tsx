@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import LibraryAssetForm from "./LibraryAssetForm";
 import LibraryAssetList from "./LibraryAssetList";
 import LibraryControlPanel, {
   type LibraryFilter,
@@ -9,7 +9,6 @@ import DashboardCardGrid from "./DashboardCardGrid";
 import DashboardSectionStack from "./DashboardSectionStack";
 import {
   dashboardSections,
-  libraryAssets,
   type LibraryAsset,
 } from "../data/dashboard";
 
@@ -21,6 +20,19 @@ type LibrarySectionContentProps = {
   librarySearchTerm: string;
   onLibrarySearchTermChange: (value: string) => void;
   filteredLibraryAssets: LibraryAsset[];
+  totalLibraryAssets: number;
+  summaryCounts: {
+    stableCount: number;
+    activeCount: number;
+    nextCount: number;
+  };
+  onAddLibraryAsset: (input: {
+    name: string;
+    role: string;
+    state: LibraryAsset["state"];
+    note: string;
+  }) => void;
+  onRemoveLibraryAsset: (assetId: string) => void;
 };
 
 function LibrarySectionContent({
@@ -31,17 +43,12 @@ function LibrarySectionContent({
   librarySearchTerm,
   onLibrarySearchTermChange,
   filteredLibraryAssets,
+  totalLibraryAssets,
+  summaryCounts,
+  onAddLibraryAsset,
+  onRemoveLibraryAsset,
 }: LibrarySectionContentProps) {
   const section = dashboardSections["ライブラリ"];
-
-  const summaryCounts = useMemo(
-    () => ({
-      stableCount: libraryAssets.filter((item) => item.state === "stable").length,
-      activeCount: libraryAssets.filter((item) => item.state === "active").length,
-      nextCount: libraryAssets.filter((item) => item.state === "next").length,
-    }),
-    []
-  );
 
   return (
     <DashboardSectionStack>
@@ -51,6 +58,8 @@ function LibrarySectionContent({
         nextCount={summaryCounts.nextCount}
       />
 
+      <LibraryAssetForm onAddAsset={onAddLibraryAsset} />
+
       <LibraryControlPanel
         selectedFilter={libraryFilter}
         onSelectFilter={onLibraryFilterChange}
@@ -58,11 +67,14 @@ function LibrarySectionContent({
         onSelectSort={onLibrarySortChange}
         searchTerm={librarySearchTerm}
         onSearchTermChange={onLibrarySearchTermChange}
-        totalCount={libraryAssets.length}
+        totalCount={totalLibraryAssets}
         filteredCount={filteredLibraryAssets.length}
       />
 
-      <LibraryAssetList items={filteredLibraryAssets} />
+      <LibraryAssetList
+        items={filteredLibraryAssets}
+        onRemoveAsset={onRemoveLibraryAsset}
+      />
 
       <DashboardCardGrid cards={section.cards} />
     </DashboardSectionStack>

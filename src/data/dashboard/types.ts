@@ -22,6 +22,7 @@ export type SettingCheck = {
 };
 
 export type LibraryAsset = {
+  id: string;
   name: string;
   role: string;
   state: "stable" | "active" | "next";
