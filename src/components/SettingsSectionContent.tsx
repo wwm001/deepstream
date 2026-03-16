@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import SettingsStatusList from "./SettingsStatusList";
 import SettingsControlPanel, {
   type SettingsFilter,
@@ -6,11 +5,7 @@ import SettingsControlPanel, {
 import SettingsStateSummary from "./SettingsStateSummary";
 import DashboardCardGrid from "./DashboardCardGrid";
 import DashboardSectionStack from "./DashboardSectionStack";
-import {
-  dashboardSections,
-  settingsChecks,
-  type SettingCheck,
-} from "../data/dashboard";
+import { dashboardSections, type SettingCheck } from "../data/dashboard";
 
 type SettingsSectionContentProps = {
   settingsFilter: SettingsFilter;
@@ -18,6 +13,13 @@ type SettingsSectionContentProps = {
   showSettingsNotes: boolean;
   onToggleSettingsNotes: () => void;
   filteredSettingsChecks: SettingCheck[];
+  totalSettingsChecks: number;
+  summaryCounts: {
+    okCount: number;
+    watchCount: number;
+    nextCount: number;
+  };
+  onCycleSettingState: (label: string) => void;
 };
 
 function SettingsSectionContent({
@@ -26,17 +28,11 @@ function SettingsSectionContent({
   showSettingsNotes,
   onToggleSettingsNotes,
   filteredSettingsChecks,
+  totalSettingsChecks,
+  summaryCounts,
+  onCycleSettingState,
 }: SettingsSectionContentProps) {
   const section = dashboardSections["設定"];
-
-  const summaryCounts = useMemo(
-    () => ({
-      okCount: settingsChecks.filter((item) => item.state === "ok").length,
-      watchCount: settingsChecks.filter((item) => item.state === "watch").length,
-      nextCount: settingsChecks.filter((item) => item.state === "next").length,
-    }),
-    []
-  );
 
   return (
     <DashboardSectionStack>
@@ -51,13 +47,14 @@ function SettingsSectionContent({
         onSelectFilter={onSettingsFilterChange}
         showNotes={showSettingsNotes}
         onToggleNotes={onToggleSettingsNotes}
-        totalCount={settingsChecks.length}
+        totalCount={totalSettingsChecks}
         filteredCount={filteredSettingsChecks.length}
       />
 
       <SettingsStatusList
         items={filteredSettingsChecks}
         showNotes={showSettingsNotes}
+        onCycleState={onCycleSettingState}
       />
 
       <DashboardCardGrid cards={section.cards} />

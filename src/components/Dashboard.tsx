@@ -10,15 +10,14 @@ import SettingsSectionContent from "./SettingsSectionContent";
 import {
   dashboardSections,
   libraryAssets,
-  settingsChecks,
   totalDashboardCards,
   totalSections,
   type DashboardSnapshotItem,
 } from "../data/dashboard";
 import type { NavigationSection } from "../navigationItems";
 import type { LibraryFilter, LibrarySort } from "./LibraryControlPanel";
-import type { SettingsFilter } from "./SettingsControlPanel";
 import { useStreamState } from "../hooks/useStreamState";
+import { useSettingsState } from "../hooks/useSettingsState";
 
 type DashboardProps = {
   currentSection: NavigationSection;
@@ -39,12 +38,20 @@ function Dashboard({ currentSection }: DashboardProps) {
     removeStreamEvent,
   } = useStreamState();
 
+  const {
+    settingsItems,
+    settingsFilter,
+    setSettingsFilter,
+    showSettingsNotes,
+    toggleSettingsNotes,
+    filteredSettingsChecks,
+    summaryCounts: settingsStateCounts,
+    cycleSettingState,
+  } = useSettingsState();
+
   const [libraryFilter, setLibraryFilter] = useState<LibraryFilter>("all");
   const [librarySort, setLibrarySort] = useState<LibrarySort>("name");
   const [librarySearchTerm, setLibrarySearchTerm] = useState("");
-
-  const [settingsFilter, setSettingsFilter] = useState<SettingsFilter>("all");
-  const [showSettingsNotes, setShowSettingsNotes] = useState(true);
 
   const filteredLibraryAssets = useMemo(() => {
     const normalizedSearchTerm = librarySearchTerm.trim().toLowerCase();
@@ -83,23 +90,6 @@ function Dashboard({ currentSection }: DashboardProps) {
       return a.name.localeCompare(b.name);
     });
   }, [libraryFilter, librarySearchTerm, librarySort]);
-
-  const filteredSettingsChecks = useMemo(() => {
-    if (settingsFilter === "all") {
-      return settingsChecks;
-    }
-
-    return settingsChecks.filter((item) => item.state === settingsFilter);
-  }, [settingsFilter]);
-
-  const settingsStateCounts = useMemo(
-    () => ({
-      ok: settingsChecks.filter((item) => item.state === "ok").length,
-      watch: settingsChecks.filter((item) => item.state === "watch").length,
-      next: settingsChecks.filter((item) => item.state === "next").length,
-    }),
-    []
-  );
 
   const libraryStateCounts = useMemo(
     () => ({
@@ -148,7 +138,7 @@ function Dashboard({ currentSection }: DashboardProps) {
       {
         label: "Settings View",
         value: String(filteredSettingsChecks.length),
-        note: `設定の現在フィルター ${settingsFilter}、ノート表示 ${showSettingsNotes ? "on" : "off"} の結果件数です。全体は ok ${settingsStateCounts.ok} / watch ${settingsStateCounts.watch} / next ${settingsStateCounts.next}。`,
+        note: `設定の現在フィルター ${settingsFilter}、ノート表示 ${showSettingsNotes ? "on" : "off"} の結果件数です。全体は ok ${settingsStateCounts.okCount} / watch ${settingsStateCounts.watchCount} / next ${settingsStateCounts.nextCount} / total ${settingsItems.length}。`,
         tone: "gray",
       },
     ],
@@ -163,6 +153,7 @@ function Dashboard({ currentSection }: DashboardProps) {
       librarySort,
       showSettingsNotes,
       settingsFilter,
+      settingsItems.length,
       streamFilter,
       streamSort,
       libraryStateCounts,
@@ -207,10 +198,11 @@ function Dashboard({ currentSection }: DashboardProps) {
             settingsFilter={settingsFilter}
             onSettingsFilterChange={setSettingsFilter}
             showSettingsNotes={showSettingsNotes}
-            onToggleSettingsNotes={() =>
-              setShowSettingsNotes((current) => !current)
-            }
+            onToggleSettingsNotes={toggleSettingsNotes}
             filteredSettingsChecks={filteredSettingsChecks}
+            totalSettingsChecks={settingsItems.length}
+            summaryCounts={settingsStateCounts}
+            onCycleSettingState={cycleSettingState}
           />
         );
       default:

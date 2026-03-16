@@ -3,6 +3,7 @@ import type { SettingCheck } from "../data/dashboard";
 type SettingsStatusListProps = {
   items: SettingCheck[];
   showNotes: boolean;
+  onCycleState: (label: string) => void;
 };
 
 const stateStyles: Record<
@@ -23,7 +24,11 @@ const stateStyles: Record<
   },
 };
 
-function SettingsStatusList({ items, showNotes }: SettingsStatusListProps) {
+function SettingsStatusList({
+  items,
+  showNotes,
+  onCycleState,
+}: SettingsStatusListProps) {
   return (
     <section
       style={{
@@ -123,21 +128,49 @@ function SettingsStatusList({ items, showNotes }: SettingsStatusListProps) {
                   </p>
                 </div>
 
-                <span
+                <div
                   style={{
-                    display: "inline-block",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                    color: stateStyle.color,
-                    background: stateStyle.background,
-                    padding: "4px 8px",
-                    borderRadius: "999px",
+                    display: "flex",
+                    gap: "8px",
+                    flexWrap: "wrap",
+                    alignItems: "center",
                   }}
                 >
-                  {item.state}
-                </span>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      color: stateStyle.color,
+                      background: stateStyle.background,
+                      padding: "4px 8px",
+                      borderRadius: "999px",
+                    }}
+                  >
+                    {item.state}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => onCycleState(item.label)}
+                    style={{
+                      border: "1px solid #d1d5db",
+                      background: "#ffffff",
+                      color: "#111827",
+                      borderRadius: "999px",
+                      padding: "4px 8px",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      cursor: "pointer",
+                    }}
+                  >
+                    cycle
+                  </button>
+                </div>
               </div>
 
               {showNotes && (
