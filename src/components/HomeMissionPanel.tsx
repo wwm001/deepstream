@@ -1,4 +1,4 @@
-import type { HomeFocusItem } from "../dashboardCards";
+import type { HomeFocusItem } from "../data/dashboard";
 
 type HomeMissionPanelProps = {
   items: HomeFocusItem[];
@@ -29,7 +29,6 @@ function HomeMissionPanel({ items }: HomeMissionPanelProps) {
   return (
     <section
       style={{
-        marginTop: "20px",
         padding: "18px",
         borderRadius: "12px",
         background: "#ffffff",

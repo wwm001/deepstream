@@ -1,4 +1,4 @@
-import type { DashboardSnapshotItem } from "../dashboardCards";
+import type { DashboardSnapshotItem } from "../data/dashboard";
 
 type SystemSnapshotPanelProps = {
   items: DashboardSnapshotItem[];
@@ -34,7 +34,6 @@ function SystemSnapshotPanel({ items }: SystemSnapshotPanelProps) {
   return (
     <section
       style={{
-        marginTop: "20px",
         padding: "18px",
         borderRadius: "12px",
         background: "#ffffff",

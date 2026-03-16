@@ -1,4 +1,4 @@
-import type { SettingCheck } from "../dashboardCards";
+import type { SettingCheck } from "../data/dashboard";
 
 export type SettingsFilter = "all" | SettingCheck["state"];
 
@@ -29,7 +29,6 @@ function SettingsControlPanel({
   return (
     <section
       style={{
-        marginTop: "20px",
         padding: "18px",
         borderRadius: "12px",
         background: "#ffffff",

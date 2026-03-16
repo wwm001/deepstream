@@ -1,4 +1,4 @@
-import type { StreamEvent } from "../dashboardCards";
+import type { StreamEvent } from "../data/dashboard";
 
 export type StreamFilter = "all" | StreamEvent["phase"];
 export type StreamSort = "timeline" | "newest" | "planned";
@@ -36,7 +36,6 @@ function StreamControlPanel({
   return (
     <section
       style={{
-        marginTop: "20px",
         padding: "18px",
         borderRadius: "12px",
         background: "#ffffff",
