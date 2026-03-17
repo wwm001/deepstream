@@ -1,7 +1,13 @@
 import type { LibraryAsset } from "../dashboardData/types";
+import DashboardPanel from "./DashboardPanel";
+
+type LibraryAssetItem = LibraryAsset & {
+  id?: string;
+};
 
 type LibraryAssetListProps = {
-  items: LibraryAsset[];
+  items: LibraryAssetItem[];
+  onRemoveAsset?: (assetId: string) => void;
 };
 
 const stateStyles: Record<
@@ -22,31 +28,12 @@ const stateStyles: Record<
   },
 };
 
-function LibraryAssetList({ items }: LibraryAssetListProps) {
+function LibraryAssetList({
+  items,
+  onRemoveAsset,
+}: LibraryAssetListProps) {
   return (
-    <section
-      style={{
-        marginTop: "20px",
-        padding: "18px",
-        borderRadius: "12px",
-        background: "#ffffff",
-        border: "1px solid #e5e7eb",
-        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
-      }}
-    >
-      <p
-        style={{
-          margin: "0 0 14px 0",
-          fontSize: "12px",
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: "#6b7280",
-        }}
-      >
-        Component Assets
-      </p>
-
+    <DashboardPanel title="Component Assets">
       <div
         style={{
           display: "grid",
@@ -59,7 +46,7 @@ function LibraryAssetList({ items }: LibraryAssetListProps) {
 
           return (
             <article
-              key={item.name}
+              key={item.id ?? item.name}
               style={{
                 padding: "14px 16px",
                 borderRadius: "10px",
@@ -86,21 +73,49 @@ function LibraryAssetList({ items }: LibraryAssetListProps) {
                   {item.name}
                 </h3>
 
-                <span
+                <div
                   style={{
-                    display: "inline-block",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                    color: stateStyle.color,
-                    background: stateStyle.background,
-                    padding: "4px 8px",
-                    borderRadius: "999px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    flexWrap: "wrap",
                   }}
                 >
-                  {item.state}
-                </span>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      color: stateStyle.color,
+                      background: stateStyle.background,
+                      padding: "4px 8px",
+                      borderRadius: "999px",
+                    }}
+                  >
+                    {item.state}
+                  </span>
+
+                  {onRemoveAsset && item.id && (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveAsset(item.id!)}
+                      style={{
+                        border: "1px solid #e5e7eb",
+                        background: "#ffffff",
+                        color: "#6b7280",
+                        borderRadius: "999px",
+                        padding: "4px 8px",
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      remove
+                    </button>
+                  )}
+                </div>
               </div>
 
               <p
@@ -128,7 +143,7 @@ function LibraryAssetList({ items }: LibraryAssetListProps) {
           );
         })}
       </div>
-    </section>
+    </DashboardPanel>
   );
 }
 

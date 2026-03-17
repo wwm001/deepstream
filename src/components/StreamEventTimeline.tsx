@@ -1,7 +1,13 @@
-import type { StreamEvent } from "../dashboardCards";
+import type { StreamEvent } from "../dashboardData/types";
+import DashboardPanel from "./DashboardPanel";
+
+type StreamEventItem = StreamEvent & {
+  id?: string;
+};
 
 type StreamEventTimelineProps = {
-  items: StreamEvent[];
+  items: StreamEventItem[];
+  onRemoveEvent?: (eventId: string) => void;
 };
 
 const phaseStyles: Record<
@@ -25,31 +31,12 @@ const phaseStyles: Record<
   },
 };
 
-function StreamEventTimeline({ items }: StreamEventTimelineProps) {
+function StreamEventTimeline({
+  items,
+  onRemoveEvent,
+}: StreamEventTimelineProps) {
   return (
-    <section
-      style={{
-        marginTop: "20px",
-        padding: "18px",
-        borderRadius: "12px",
-        background: "#ffffff",
-        border: "1px solid #e5e7eb",
-        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
-      }}
-    >
-      <p
-        style={{
-          margin: "0 0 14px 0",
-          fontSize: "12px",
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: "#6b7280",
-        }}
-      >
-        Stream Timeline
-      </p>
-
+    <DashboardPanel title="Stream Timeline">
       <div
         style={{
           display: "grid",
@@ -61,7 +48,7 @@ function StreamEventTimeline({ items }: StreamEventTimelineProps) {
 
           return (
             <article
-              key={`${item.title}-${index}`}
+              key={item.id ?? `${item.title}-${index}`}
               style={{
                 display: "grid",
                 gridTemplateColumns: "28px 1fr",
@@ -125,22 +112,50 @@ function StreamEventTimeline({ items }: StreamEventTimelineProps) {
                     {item.title}
                   </h3>
 
-                  <span
+                  <div
                     style={{
-                      display: "inline-block",
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      letterSpacing: "0.06em",
-                      textTransform: "uppercase",
-                      color: phaseStyle.color,
-                      background: "#ffffff",
-                      padding: "4px 8px",
-                      borderRadius: "999px",
-                      border: `1px solid ${phaseStyle.border}`,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      flexWrap: "wrap",
                     }}
                   >
-                    {item.phase}
-                  </span>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: phaseStyle.color,
+                        background: "#ffffff",
+                        padding: "4px 8px",
+                        borderRadius: "999px",
+                        border: `1px solid ${phaseStyle.border}`,
+                      }}
+                    >
+                      {item.phase}
+                    </span>
+
+                    {onRemoveEvent && item.id && (
+                      <button
+                        type="button"
+                        onClick={() => onRemoveEvent(item.id!)}
+                        style={{
+                          border: "1px solid #e5e7eb",
+                          background: "#ffffff",
+                          color: "#6b7280",
+                          borderRadius: "999px",
+                          padding: "4px 8px",
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        remove
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <p
@@ -158,7 +173,7 @@ function StreamEventTimeline({ items }: StreamEventTimelineProps) {
           );
         })}
       </div>
-    </section>
+    </DashboardPanel>
   );
 }
 

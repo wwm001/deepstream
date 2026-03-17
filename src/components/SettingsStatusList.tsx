@@ -1,7 +1,10 @@
 import type { SettingCheck } from "../dashboardData/types";
+import DashboardPanel from "./DashboardPanel";
 
 type SettingsStatusListProps = {
   items: SettingCheck[];
+  showNotes?: boolean;
+  onCycleState?: (label: string) => void;
 };
 
 const stateStyles: Record<
@@ -22,31 +25,13 @@ const stateStyles: Record<
   },
 };
 
-function SettingsStatusList({ items }: SettingsStatusListProps) {
+function SettingsStatusList({
+  items,
+  showNotes = true,
+  onCycleState,
+}: SettingsStatusListProps) {
   return (
-    <section
-      style={{
-        marginTop: "20px",
-        padding: "18px",
-        borderRadius: "12px",
-        background: "#ffffff",
-        border: "1px solid #e5e7eb",
-        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
-      }}
-    >
-      <p
-        style={{
-          margin: "0 0 14px 0",
-          fontSize: "12px",
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: "#6b7280",
-        }}
-      >
-        Environment Checks
-      </p>
-
+    <DashboardPanel title="Environment Checks">
       <div
         style={{
           display: "grid",
@@ -101,38 +86,62 @@ function SettingsStatusList({ items }: SettingsStatusListProps) {
                   </p>
                 </div>
 
-                <span
-                  style={{
-                    display: "inline-block",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                    color: stateStyle.color,
-                    background: stateStyle.background,
-                    padding: "4px 8px",
-                    borderRadius: "999px",
-                  }}
-                >
-                  {item.state}
-                </span>
+                {onCycleState ? (
+                  <button
+                    type="button"
+                    onClick={() => onCycleState(item.label)}
+                    style={{
+                      display: "inline-block",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      color: stateStyle.color,
+                      background: stateStyle.background,
+                      padding: "4px 8px",
+                      borderRadius: "999px",
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {item.state}
+                  </button>
+                ) : (
+                  <span
+                    style={{
+                      display: "inline-block",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      color: stateStyle.color,
+                      background: stateStyle.background,
+                      padding: "4px 8px",
+                      borderRadius: "999px",
+                    }}
+                  >
+                    {item.state}
+                  </span>
+                )}
               </div>
 
-              <p
-                style={{
-                  margin: "10px 0 0 0",
-                  color: "#4b5563",
-                  lineHeight: 1.6,
-                  fontSize: "14px",
-                }}
-              >
-                {item.note}
-              </p>
+              {showNotes && (
+                <p
+                  style={{
+                    margin: "10px 0 0 0",
+                    color: "#4b5563",
+                    lineHeight: 1.6,
+                    fontSize: "14px",
+                  }}
+                >
+                  {item.note}
+                </p>
+              )}
             </article>
           );
         })}
       </div>
-    </section>
+    </DashboardPanel>
   );
 }
 
