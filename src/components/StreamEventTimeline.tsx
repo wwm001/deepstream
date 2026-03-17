@@ -1,8 +1,7 @@
-import type { StreamEvent } from "../data/dashboard";
+import type { StreamEvent } from "../dashboardCards";
 
 type StreamEventTimelineProps = {
   items: StreamEvent[];
-  onRemoveEvent: (eventId: string) => void;
 };
 
 const phaseStyles: Record<
@@ -26,13 +25,11 @@ const phaseStyles: Record<
   },
 };
 
-function StreamEventTimeline({
-  items,
-  onRemoveEvent,
-}: StreamEventTimelineProps) {
+function StreamEventTimeline({ items }: StreamEventTimelineProps) {
   return (
     <section
       style={{
+        marginTop: "20px",
         padding: "18px",
         borderRadius: "12px",
         background: "#ffffff",
@@ -53,28 +50,6 @@ function StreamEventTimeline({
         Stream Timeline
       </p>
 
-      {items.length === 0 && (
-        <article
-          style={{
-            padding: "14px 16px",
-            borderRadius: "10px",
-            background: "#f9fafb",
-            border: "1px solid #f3f4f6",
-          }}
-        >
-          <p
-            style={{
-              margin: 0,
-              fontSize: "14px",
-              lineHeight: 1.6,
-              color: "#4b5563",
-            }}
-          >
-            該当するイベントはありません。
-          </p>
-        </article>
-      )}
-
       <div
         style={{
           display: "grid",
@@ -86,7 +61,7 @@ function StreamEventTimeline({
 
           return (
             <article
-              key={item.id}
+              key={`${item.title}-${index}`}
               style={{
                 display: "grid",
                 gridTemplateColumns: "28px 1fr",
@@ -150,50 +125,22 @@ function StreamEventTimeline({
                     {item.title}
                   </h3>
 
-                  <div
+                  <span
                     style={{
-                      display: "flex",
-                      gap: "8px",
-                      flexWrap: "wrap",
-                      alignItems: "center",
+                      display: "inline-block",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      color: phaseStyle.color,
+                      background: "#ffffff",
+                      padding: "4px 8px",
+                      borderRadius: "999px",
+                      border: `1px solid ${phaseStyle.border}`,
                     }}
                   >
-                    <span
-                      style={{
-                        display: "inline-block",
-                        fontSize: "11px",
-                        fontWeight: 700,
-                        letterSpacing: "0.06em",
-                        textTransform: "uppercase",
-                        color: phaseStyle.color,
-                        background: "#ffffff",
-                        padding: "4px 8px",
-                        borderRadius: "999px",
-                        border: `1px solid ${phaseStyle.border}`,
-                      }}
-                    >
-                      {item.phase}
-                    </span>
-
-                    <button
-                      type="button"
-                      onClick={() => onRemoveEvent(item.id)}
-                      style={{
-                        border: "1px solid #d1d5db",
-                        background: "#ffffff",
-                        color: "#111827",
-                        borderRadius: "999px",
-                        padding: "4px 8px",
-                        fontSize: "11px",
-                        fontWeight: 700,
-                        letterSpacing: "0.06em",
-                        textTransform: "uppercase",
-                        cursor: "pointer",
-                      }}
-                    >
-                      delete
-                    </button>
-                  </div>
+                    {item.phase}
+                  </span>
                 </div>
 
                 <p

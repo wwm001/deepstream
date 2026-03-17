@@ -1,18 +1,18 @@
-import { useMemo } from "react";
-import SectionHeader from "./SectionHeader";
+import StreamCard from "./StreamCard";
 import StatusPill from "./StatusPill";
+import SectionHeader from "./SectionHeader";
 import DashboardSummary from "./DashboardSummary";
 import DashboardDetailPanel from "./DashboardDetailPanel";
-import HomeSectionContent from "./HomeSectionContent";
-import StreamSectionContent from "./StreamSectionContent";
-import LibrarySectionContent from "./LibrarySectionContent";
-import SettingsSectionContent from "./SettingsSectionContent";
-import { dashboardSections, totalDashboardCards, totalSections } from "../data/dashboard";
+import SettingsStatusList from "./SettingsStatusList";
+import LibraryAssetList from "./LibraryAssetList";
+import StreamEventTimeline from "./StreamEventTimeline";
+import {
+  dashboardSections,
+  settingsChecks,
+  libraryAssets,
+  streamEvents,
+} from "../dashboardCards";
 import type { NavigationSection } from "../navigationItems";
-import { useStreamState } from "../hooks/useStreamState";
-import { useSettingsState } from "../hooks/useSettingsState";
-import { useLibraryState } from "../hooks/useLibraryState";
-import { buildHomeSnapshotItems } from "../utils/buildHomeSnapshotItems";
 
 type DashboardProps = {
   currentSection: NavigationSection;
@@ -20,143 +20,6 @@ type DashboardProps = {
 
 function Dashboard({ currentSection }: DashboardProps) {
   const section = dashboardSections[currentSection];
-
-  const {
-    streamFilter,
-    setStreamFilter,
-    streamSort,
-    setStreamSort,
-    events,
-    filteredStreamEvents,
-    phaseCounts,
-    userCreatedEventCount,
-    addStreamEvent,
-    removeStreamEvent,
-  } = useStreamState();
-
-  const {
-    settingsItems,
-    settingsFilter,
-    setSettingsFilter,
-    showSettingsNotes,
-    toggleSettingsNotes,
-    filteredSettingsChecks,
-    summaryCounts: settingsStateCounts,
-    cycleSettingState,
-  } = useSettingsState();
-
-  const {
-    libraryItems,
-    libraryFilter,
-    setLibraryFilter,
-    librarySort,
-    setLibrarySort,
-    librarySearchTerm,
-    setLibrarySearchTerm,
-    filteredLibraryAssets,
-    summaryCounts: libraryStateCounts,
-    userCreatedAssetCount,
-    addLibraryAsset,
-    removeLibraryAsset,
-  } = useLibraryState();
-
-  const homeSystemSnapshotItems = useMemo(
-    () =>
-      buildHomeSnapshotItems({
-        currentSection,
-        totalSections,
-        totalDashboardCards,
-        filteredLibraryAssetsCount: filteredLibraryAssets.length,
-        filteredStreamEventsCount: filteredStreamEvents.length,
-        filteredSettingsChecksCount: filteredSettingsChecks.length,
-        libraryFilter,
-        librarySort,
-        librarySearchTerm,
-        libraryItemsCount: libraryItems.length,
-        libraryStateCounts,
-        streamFilter,
-        streamSort,
-        streamEventsCount: events.length,
-        streamPhaseCounts: phaseCounts,
-        settingsFilter,
-        showSettingsNotes,
-        settingsItemsCount: settingsItems.length,
-        settingsStateCounts,
-        userCreatedEventCount,
-        userCreatedAssetCount,
-      }),
-    [
-      currentSection,
-      filteredLibraryAssets.length,
-      filteredStreamEvents.length,
-      filteredSettingsChecks.length,
-      libraryFilter,
-      libraryItems.length,
-      librarySearchTerm,
-      librarySort,
-      libraryStateCounts,
-      events.length,
-      phaseCounts,
-      settingsFilter,
-      showSettingsNotes,
-      settingsItems.length,
-      settingsStateCounts,
-      userCreatedEventCount,
-      userCreatedAssetCount,
-    ]
-  );
-
-  const renderSectionContent = () => {
-    switch (currentSection) {
-      case "ホーム":
-        return <HomeSectionContent snapshotItems={homeSystemSnapshotItems} />;
-      case "ストリーム":
-        return (
-          <StreamSectionContent
-            streamFilter={streamFilter}
-            onStreamFilterChange={setStreamFilter}
-            streamSort={streamSort}
-            onStreamSortChange={setStreamSort}
-            filteredStreamEvents={filteredStreamEvents}
-            totalStreamEvents={events.length}
-            phaseCounts={phaseCounts}
-            onAddStreamEvent={addStreamEvent}
-            onRemoveStreamEvent={removeStreamEvent}
-          />
-        );
-      case "ライブラリ":
-        return (
-          <LibrarySectionContent
-            libraryFilter={libraryFilter}
-            onLibraryFilterChange={setLibraryFilter}
-            librarySort={librarySort}
-            onLibrarySortChange={setLibrarySort}
-            librarySearchTerm={librarySearchTerm}
-            onLibrarySearchTermChange={setLibrarySearchTerm}
-            filteredLibraryAssets={filteredLibraryAssets}
-            totalLibraryAssets={libraryItems.length}
-            summaryCounts={libraryStateCounts}
-            onAddLibraryAsset={addLibraryAsset}
-            onRemoveLibraryAsset={removeLibraryAsset}
-          />
-        );
-      case "設定":
-        return (
-          <SettingsSectionContent
-            settingsFilter={settingsFilter}
-            onSettingsFilterChange={setSettingsFilter}
-            showSettingsNotes={showSettingsNotes}
-            onToggleSettingsNotes={toggleSettingsNotes}
-            filteredSettingsChecks={filteredSettingsChecks}
-            totalSettingsChecks={settingsItems.length}
-            summaryCounts={settingsStateCounts}
-            onCycleSettingState={cycleSettingState}
-          />
-        );
-      default:
-        return null;
-    }
-  };
 
   return (
     <section>
@@ -183,7 +46,35 @@ function Dashboard({ currentSection }: DashboardProps) {
         items={section.detailItems}
       />
 
-      {renderSectionContent()}
+      {currentSection === "ストリーム" && (
+        <StreamEventTimeline items={streamEvents} />
+      )}
+
+      {currentSection === "ライブラリ" && (
+        <LibraryAssetList items={libraryAssets} />
+      )}
+
+      {currentSection === "設定" && (
+        <SettingsStatusList items={settingsChecks} />
+      )}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: "16px",
+          marginTop: "24px",
+        }}
+      >
+        {section.cards.map((card) => (
+          <StreamCard
+            key={card.title}
+            title={card.title}
+            description={card.description}
+            type={card.type}
+          />
+        ))}
+      </div>
     </section>
   );
 }
