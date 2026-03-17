@@ -15,23 +15,28 @@ import HomeSectionSnapshotList from "./HomeSectionSnapshotList";
 
 type DashboardExtraContentProps = {
   currentSection: NavigationSection;
-};
-
-const dashboardExtraContentMap: Record<NavigationSection, ReactNode> = {
-  ホーム: (
-    <>
-      <HomeOverviewPanel items={homeSignals} />
-      <HomeSectionSnapshotList items={homeSectionSnapshots} />
-    </>
-  ),
-  ストリーム: <StreamEventTimeline items={streamEvents} />,
-  ライブラリ: <LibraryAssetList items={libraryAssets} />,
-  設定: <SettingsStatusList items={settingsChecks} />,
+  onSelectSection: (section: NavigationSection) => void;
 };
 
 function DashboardExtraContent({
   currentSection,
+  onSelectSection,
 }: DashboardExtraContentProps) {
+  const dashboardExtraContentMap: Record<NavigationSection, ReactNode> = {
+    ホーム: (
+      <>
+        <HomeOverviewPanel items={homeSignals} />
+        <HomeSectionSnapshotList
+          items={homeSectionSnapshots}
+          onSelectSection={onSelectSection}
+        />
+      </>
+    ),
+    ストリーム: <StreamEventTimeline items={streamEvents} />,
+    ライブラリ: <LibraryAssetList items={libraryAssets} />,
+    設定: <SettingsStatusList items={settingsChecks} />,
+  };
+
   return <>{dashboardExtraContentMap[currentSection]}</>;
 }
 

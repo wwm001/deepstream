@@ -9,9 +9,13 @@ import type { NavigationSection } from "../navigationItems";
 
 type DashboardProps = {
   currentSection: NavigationSection;
+  onSelectSection: (section: NavigationSection) => void;
 };
 
-function Dashboard({ currentSection }: DashboardProps) {
+function Dashboard({
+  currentSection,
+  onSelectSection,
+}: DashboardProps) {
   const section = dashboardSections[currentSection];
 
   return (
@@ -39,7 +43,10 @@ function Dashboard({ currentSection }: DashboardProps) {
         items={section.detailItems}
       />
 
-      <DashboardExtraContent currentSection={currentSection} />
+      <DashboardExtraContent
+        currentSection={currentSection}
+        onSelectSection={onSelectSection}
+      />
 
       <div
         style={{

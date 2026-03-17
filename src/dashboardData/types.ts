@@ -1,4 +1,5 @@
 import type { DashboardCard } from "../types";
+import type { NavigationSection } from "../navigationItems";
 
 export type DashboardDetailItem = {
   label: string;
@@ -41,7 +42,7 @@ export type HomeSignal = {
 };
 
 export type HomeSectionSnapshot = {
-  section: string;
+  section: NavigationSection;
   status: string;
   focus: string;
   cardCount: number;

@@ -1,13 +1,19 @@
 import type { HomeSectionSnapshot } from "../dashboardData/types";
+import type { NavigationSection } from "../navigationItems";
 import DashboardPanel from "./DashboardPanel";
 import DashboardTile from "./DashboardTile";
 import DashboardBadge from "./DashboardBadge";
+import DashboardActionButton from "./DashboardActionButton";
 
 type HomeSectionSnapshotListProps = {
   items: HomeSectionSnapshot[];
+  onSelectSection: (section: NavigationSection) => void;
 };
 
-function HomeSectionSnapshotList({ items }: HomeSectionSnapshotListProps) {
+function HomeSectionSnapshotList({
+  items,
+  onSelectSection,
+}: HomeSectionSnapshotListProps) {
   return (
     <DashboardPanel title="Section Map">
       <div
@@ -22,11 +28,24 @@ function HomeSectionSnapshotList({ items }: HomeSectionSnapshotListProps) {
             key={item.section}
             title={item.section}
             right={
-              <DashboardBadge
-                label={`cards ${item.cardCount}`}
-                color="#1d4ed8"
-                background="#dbeafe"
-              />
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <DashboardBadge
+                  label={`cards ${item.cardCount}`}
+                  color="#1d4ed8"
+                  background="#dbeafe"
+                />
+                <DashboardActionButton
+                  label="open"
+                  onClick={() => onSelectSection(item.section)}
+                />
+              </div>
             }
           >
             <p
