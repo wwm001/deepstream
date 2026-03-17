@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 type DashboardBadgeProps = {
   label: string;
   color: string;
@@ -13,6 +15,9 @@ function DashboardBadge({
   borderColor,
   onClick,
 }: DashboardBadgeProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+
   const commonStyle = {
     display: "inline-block",
     fontSize: "11px",
@@ -31,9 +36,22 @@ function DashboardBadge({
       <button
         type="button"
         onClick={onClick}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
         style={{
           ...commonStyle,
           cursor: "pointer",
+          transform: isHovered ? "translateY(-1px)" : "translateY(0)",
+          boxShadow:
+            isHovered || isFocused
+              ? "0 4px 10px rgba(0, 0, 0, 0.08)"
+              : "none",
+          outline: isFocused ? "2px solid #93c5fd" : "none",
+          outlineOffset: isFocused ? "2px" : undefined,
+          transition:
+            "transform 140ms ease, box-shadow 140ms ease, outline 140ms ease",
         }}
       >
         {label}
