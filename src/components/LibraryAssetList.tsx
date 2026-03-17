@@ -1,6 +1,7 @@
 import type { LibraryAsset } from "../dashboardData/types";
 import DashboardPanel from "./DashboardPanel";
 import DashboardTile from "./DashboardTile";
+import DashboardBadge from "./DashboardBadge";
 
 type LibraryAssetItem = LibraryAsset & {
   id?: string;
@@ -58,21 +59,11 @@ function LibraryAssetList({
                     flexWrap: "wrap",
                   }}
                 >
-                  <span
-                    style={{
-                      display: "inline-block",
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      letterSpacing: "0.06em",
-                      textTransform: "uppercase",
-                      color: stateStyle.color,
-                      background: stateStyle.background,
-                      padding: "4px 8px",
-                      borderRadius: "999px",
-                    }}
-                  >
-                    {item.state}
-                  </span>
+                  <DashboardBadge
+                    label={item.state}
+                    color={stateStyle.color}
+                    background={stateStyle.background}
+                  />
 
                   {onRemoveAsset && item.id && (
                     <button

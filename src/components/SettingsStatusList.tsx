@@ -1,6 +1,7 @@
 import type { SettingCheck } from "../dashboardData/types";
 import DashboardPanel from "./DashboardPanel";
 import DashboardTile from "./DashboardTile";
+import DashboardBadge from "./DashboardBadge";
 
 type SettingsStatusListProps = {
   items: SettingCheck[];
@@ -47,43 +48,16 @@ function SettingsStatusList({
               key={item.label}
               title={item.label}
               right={
-                onCycleState ? (
-                  <button
-                    type="button"
-                    onClick={() => onCycleState(item.label)}
-                    style={{
-                      display: "inline-block",
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      letterSpacing: "0.06em",
-                      textTransform: "uppercase",
-                      color: stateStyle.color,
-                      background: stateStyle.background,
-                      padding: "4px 8px",
-                      borderRadius: "999px",
-                      border: "none",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {item.state}
-                  </button>
-                ) : (
-                  <span
-                    style={{
-                      display: "inline-block",
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      letterSpacing: "0.06em",
-                      textTransform: "uppercase",
-                      color: stateStyle.color,
-                      background: stateStyle.background,
-                      padding: "4px 8px",
-                      borderRadius: "999px",
-                    }}
-                  >
-                    {item.state}
-                  </span>
-                )
+                <DashboardBadge
+                  label={item.state}
+                  color={stateStyle.color}
+                  background={stateStyle.background}
+                  onClick={
+                    onCycleState
+                      ? () => onCycleState(item.label)
+                      : undefined
+                  }
+                />
               }
             >
               <p

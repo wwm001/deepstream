@@ -1,6 +1,7 @@
 import type { HomeSectionSnapshot } from "../dashboardData/types";
 import DashboardPanel from "./DashboardPanel";
 import DashboardTile from "./DashboardTile";
+import DashboardBadge from "./DashboardBadge";
 
 type HomeSectionSnapshotListProps = {
   items: HomeSectionSnapshot[];
@@ -21,21 +22,11 @@ function HomeSectionSnapshotList({ items }: HomeSectionSnapshotListProps) {
             key={item.section}
             title={item.section}
             right={
-              <span
-                style={{
-                  display: "inline-block",
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                  color: "#1d4ed8",
-                  background: "#dbeafe",
-                  padding: "4px 8px",
-                  borderRadius: "999px",
-                }}
-              >
-                cards {item.cardCount}
-              </span>
+              <DashboardBadge
+                label={`cards ${item.cardCount}`}
+                color="#1d4ed8"
+                background="#dbeafe"
+              />
             }
           >
             <p

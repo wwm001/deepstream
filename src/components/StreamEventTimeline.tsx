@@ -1,5 +1,6 @@
 import type { StreamEvent } from "../dashboardData/types";
 import DashboardPanel from "./DashboardPanel";
+import DashboardBadge from "./DashboardBadge";
 
 type StreamEventItem = StreamEvent & {
   id?: string;
@@ -120,22 +121,12 @@ function StreamEventTimeline({
                       flexWrap: "wrap",
                     }}
                   >
-                    <span
-                      style={{
-                        display: "inline-block",
-                        fontSize: "11px",
-                        fontWeight: 700,
-                        letterSpacing: "0.06em",
-                        textTransform: "uppercase",
-                        color: phaseStyle.color,
-                        background: "#ffffff",
-                        padding: "4px 8px",
-                        borderRadius: "999px",
-                        border: `1px solid ${phaseStyle.border}`,
-                      }}
-                    >
-                      {item.phase}
-                    </span>
+                    <DashboardBadge
+                      label={item.phase}
+                      color={phaseStyle.color}
+                      background="#ffffff"
+                      borderColor={phaseStyle.border}
+                    />
 
                     {onRemoveEvent && item.id && (
                       <button
