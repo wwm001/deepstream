@@ -1,31 +1,11 @@
-import type { DashboardSectionData, HomeSignal } from "./types";
-
-export const homeSignals: HomeSignal[] = [
-  {
-    label: "Active Section Count",
-    value: "4",
-    note: "ホーム / ストリーム / ライブラリ / 設定の4系統が切替可能です。",
-    tone: "primary",
-  },
-  {
-    label: "Git State",
-    value: "Synced",
-    note: "main ブランチ基準でローカルと GitHub の同期が取れている状態です。",
-    tone: "success",
-  },
-  {
-    label: "Current Focus",
-    value: "UI Refinement",
-    note: "静的モックから、各画面に固有の役割を持つ試作UIへ進化しています。",
-    tone: "warning",
-  },
-  {
-    label: "Operation Mode",
-    value: "Small Commits",
-    note: "表示確認後すぐ保存する運用が定着し、差分管理が安定しています。",
-    tone: "neutral",
-  },
-];
+import type {
+  DashboardSectionData,
+  HomeSignal,
+  HomeSectionSnapshot,
+} from "./types";
+import { streamEvents, streamSectionData } from "./streamData";
+import { libraryAssets, librarySectionData } from "./libraryData";
+import { settingsChecks, settingsSectionData } from "./settingsData";
 
 export const homeSectionData: DashboardSectionData = {
   description: "DeepStream 全体の現在地と重要ポイントを表示します。",
@@ -69,3 +49,61 @@ export const homeSectionData: DashboardSectionData = {
     },
   ],
 };
+
+export const homeSectionSnapshots: HomeSectionSnapshot[] = [
+  {
+    section: "ホーム",
+    status: homeSectionData.statusLabel,
+    focus: homeSectionData.focusLabel,
+    cardCount: homeSectionData.cards.length,
+    note: "DeepStream 全体の現在地と主要信号を俯瞰するトップ画面です。",
+  },
+  {
+    section: "ストリーム",
+    status: streamSectionData.statusLabel,
+    focus: streamSectionData.focusLabel,
+    cardCount: streamSectionData.cards.length,
+    note: "更新履歴と進行フローを追跡する時系列寄りの画面です。",
+  },
+  {
+    section: "ライブラリ",
+    status: librarySectionData.statusLabel,
+    focus: librarySectionData.focusLabel,
+    cardCount: librarySectionData.cards.length,
+    note: "再利用部品や設計資産を棚卸しする整理用の画面です。",
+  },
+  {
+    section: "設定",
+    status: settingsSectionData.statusLabel,
+    focus: settingsSectionData.focusLabel,
+    cardCount: settingsSectionData.cards.length,
+    note: "開発環境や運用状態を確認する監視用の画面です。",
+  },
+];
+
+export const homeSignals: HomeSignal[] = [
+  {
+    label: "Active Section Count",
+    value: String(homeSectionSnapshots.length),
+    note: "ホーム / ストリーム / ライブラリ / 設定の4系統が切替可能です。",
+    tone: "primary",
+  },
+  {
+    label: "Stream Events",
+    value: String(streamEvents.length),
+    note: "ストリーム画面には進行イベントの時系列データを載せています。",
+    tone: "success",
+  },
+  {
+    label: "Library Assets",
+    value: String(libraryAssets.length),
+    note: "ライブラリ画面には再利用資産の一覧が整理されています。",
+    tone: "warning",
+  },
+  {
+    label: "Settings Checks",
+    value: String(settingsChecks.length),
+    note: "設定画面には環境確認項目を専用パネルで表示しています。",
+    tone: "neutral",
+  },
+];

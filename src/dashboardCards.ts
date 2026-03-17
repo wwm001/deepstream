@@ -5,9 +5,10 @@ export type {
   LibraryAsset,
   StreamEvent,
   HomeSignal,
+  HomeSectionSnapshot,
 } from "./dashboardData/types";
 
-export { homeSignals } from "./dashboardData/homeData";
+export { homeSignals, homeSectionSnapshots } from "./dashboardData/homeData";
 export { streamEvents } from "./dashboardData/streamData";
 export { libraryAssets } from "./dashboardData/libraryData";
 export { settingsChecks } from "./dashboardData/settingsData";

@@ -39,3 +39,11 @@ export type HomeSignal = {
   note: string;
   tone: "primary" | "success" | "warning" | "neutral";
 };
+
+export type HomeSectionSnapshot = {
+  section: string;
+  status: string;
+  focus: string;
+  cardCount: number;
+  note: string;
+};

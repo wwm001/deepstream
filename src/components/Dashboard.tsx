@@ -7,12 +7,14 @@ import SettingsStatusList from "./SettingsStatusList";
 import LibraryAssetList from "./LibraryAssetList";
 import StreamEventTimeline from "./StreamEventTimeline";
 import HomeOverviewPanel from "./HomeOverviewPanel";
+import HomeSectionSnapshotList from "./HomeSectionSnapshotList";
 import {
   dashboardSections,
   settingsChecks,
   libraryAssets,
   streamEvents,
   homeSignals,
+  homeSectionSnapshots,
 } from "../dashboardCards";
 import type { NavigationSection } from "../navigationItems";
 
@@ -48,7 +50,12 @@ function Dashboard({ currentSection }: DashboardProps) {
         items={section.detailItems}
       />
 
-      {currentSection === "ホーム" && <HomeOverviewPanel items={homeSignals} />}
+      {currentSection === "ホーム" && (
+        <>
+          <HomeOverviewPanel items={homeSignals} />
+          <HomeSectionSnapshotList items={homeSectionSnapshots} />
+        </>
+      )}
 
       {currentSection === "ストリーム" && (
         <StreamEventTimeline items={streamEvents} />
