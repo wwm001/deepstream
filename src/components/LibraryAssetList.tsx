@@ -2,6 +2,7 @@ import type { LibraryAsset } from "../dashboardData/types";
 import DashboardPanel from "./DashboardPanel";
 import DashboardTile from "./DashboardTile";
 import DashboardBadge from "./DashboardBadge";
+import DashboardActionButton from "./DashboardActionButton";
 
 type LibraryAssetItem = LibraryAsset & {
   id?: string;
@@ -66,22 +67,10 @@ function LibraryAssetList({
                   />
 
                   {onRemoveAsset && item.id && (
-                    <button
-                      type="button"
+                    <DashboardActionButton
+                      label="remove"
                       onClick={() => onRemoveAsset(item.id!)}
-                      style={{
-                        border: "1px solid #e5e7eb",
-                        background: "#ffffff",
-                        color: "#6b7280",
-                        borderRadius: "999px",
-                        padding: "4px 8px",
-                        fontSize: "11px",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                      }}
-                    >
-                      remove
-                    </button>
+                    />
                   )}
                 </div>
               }

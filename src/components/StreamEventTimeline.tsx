@@ -1,6 +1,7 @@
 import type { StreamEvent } from "../dashboardData/types";
 import DashboardPanel from "./DashboardPanel";
 import DashboardBadge from "./DashboardBadge";
+import DashboardActionButton from "./DashboardActionButton";
 
 type StreamEventItem = StreamEvent & {
   id?: string;
@@ -129,22 +130,10 @@ function StreamEventTimeline({
                     />
 
                     {onRemoveEvent && item.id && (
-                      <button
-                        type="button"
+                      <DashboardActionButton
+                        label="remove"
                         onClick={() => onRemoveEvent(item.id!)}
-                        style={{
-                          border: "1px solid #e5e7eb",
-                          background: "#ffffff",
-                          color: "#6b7280",
-                          borderRadius: "999px",
-                          padding: "4px 8px",
-                          fontSize: "11px",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                        }}
-                      >
-                        remove
-                      </button>
+                      />
                     )}
                   </div>
                 </div>
