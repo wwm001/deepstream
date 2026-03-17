@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 
 type DashboardTileProps = {
   title?: string;
@@ -7,6 +7,7 @@ type DashboardTileProps = {
   background?: string;
   borderColor?: string;
   titleColor?: string;
+  onClick?: () => void;
 };
 
 function DashboardTile({
@@ -16,14 +17,29 @@ function DashboardTile({
   background = "#f9fafb",
   borderColor = "#f3f4f6",
   titleColor = "#6b7280",
+  onClick,
 }: DashboardTileProps) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (!onClick) return;
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onClick();
+    }
+  };
+
   return (
     <article
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={handleKeyDown}
       style={{
         padding: "14px 16px",
         borderRadius: "10px",
         background,
         border: `1px solid ${borderColor}`,
+        cursor: onClick ? "pointer" : "default",
       }}
     >
       {(title || right) && (

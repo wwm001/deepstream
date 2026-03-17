@@ -3,7 +3,6 @@ import type { NavigationSection } from "../navigationItems";
 import DashboardPanel from "./DashboardPanel";
 import DashboardTile from "./DashboardTile";
 import DashboardBadge from "./DashboardBadge";
-import DashboardActionButton from "./DashboardActionButton";
 
 type HomeSectionSnapshotListProps = {
   items: HomeSectionSnapshot[];
@@ -27,25 +26,13 @@ function HomeSectionSnapshotList({
           <DashboardTile
             key={item.section}
             title={item.section}
+            onClick={() => onSelectSection(item.section)}
             right={
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  flexWrap: "wrap",
-                }}
-              >
-                <DashboardBadge
-                  label={`cards ${item.cardCount}`}
-                  color="#1d4ed8"
-                  background="#dbeafe"
-                />
-                <DashboardActionButton
-                  label="open"
-                  onClick={() => onSelectSection(item.section)}
-                />
-              </div>
+              <DashboardBadge
+                label={`cards ${item.cardCount}`}
+                color="#1d4ed8"
+                background="#dbeafe"
+              />
             }
           >
             <p
