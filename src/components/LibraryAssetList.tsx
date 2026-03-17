@@ -1,5 +1,6 @@
 import type { LibraryAsset } from "../dashboardData/types";
 import DashboardPanel from "./DashboardPanel";
+import DashboardTile from "./DashboardTile";
 
 type LibraryAssetItem = LibraryAsset & {
   id?: string;
@@ -45,34 +46,10 @@ function LibraryAssetList({
           const stateStyle = stateStyles[item.state];
 
           return (
-            <article
+            <DashboardTile
               key={item.id ?? item.name}
-              style={{
-                padding: "14px 16px",
-                borderRadius: "10px",
-                background: "#f9fafb",
-                border: "1px solid #f3f4f6",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  gap: "12px",
-                  flexWrap: "wrap",
-                }}
-              >
-                <h3
-                  style={{
-                    margin: 0,
-                    fontSize: "16px",
-                    color: "#111827",
-                  }}
-                >
-                  {item.name}
-                </h3>
-
+              title={item.name}
+              right={
                 <div
                   style={{
                     display: "flex",
@@ -116,11 +93,11 @@ function LibraryAssetList({
                     </button>
                   )}
                 </div>
-              </div>
-
+              }
+            >
               <p
                 style={{
-                  margin: "10px 0 0 0",
+                  margin: 0,
                   fontSize: "14px",
                   fontWeight: 600,
                   color: "#111827",
@@ -139,7 +116,7 @@ function LibraryAssetList({
               >
                 {item.note}
               </p>
-            </article>
+            </DashboardTile>
           );
         })}
       </div>

@@ -1,3 +1,6 @@
+import DashboardPanel from "./DashboardPanel";
+import DashboardTile from "./DashboardTile";
+
 type DashboardDetailItem = {
   label: string;
   value: string;
@@ -13,29 +16,7 @@ function DashboardDetailPanel({
   items,
 }: DashboardDetailPanelProps) {
   return (
-    <section
-      style={{
-        marginTop: "20px",
-        padding: "18px",
-        borderRadius: "12px",
-        background: "#ffffff",
-        border: "1px solid #e5e7eb",
-        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
-      }}
-    >
-      <p
-        style={{
-          margin: "0 0 14px 0",
-          fontSize: "12px",
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: "#6b7280",
-        }}
-      >
-        {title}
-      </p>
-
+    <DashboardPanel title={title}>
       <div
         style={{
           display: "grid",
@@ -43,28 +24,7 @@ function DashboardDetailPanel({
         }}
       >
         {items.map((item) => (
-          <div
-            key={item.label}
-            style={{
-              padding: "12px 14px",
-              borderRadius: "10px",
-              background: "#f9fafb",
-              border: "1px solid #f3f4f6",
-            }}
-          >
-            <p
-              style={{
-                margin: "0 0 6px 0",
-                fontSize: "11px",
-                fontWeight: 700,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                color: "#6b7280",
-              }}
-            >
-              {item.label}
-            </p>
-
+          <DashboardTile key={item.label} title={item.label}>
             <p
               style={{
                 margin: 0,
@@ -76,10 +36,10 @@ function DashboardDetailPanel({
             >
               {item.value}
             </p>
-          </div>
+          </DashboardTile>
         ))}
       </div>
-    </section>
+    </DashboardPanel>
   );
 }
 

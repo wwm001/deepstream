@@ -1,4 +1,6 @@
 import type { HomeSignal } from "../dashboardData/types";
+import DashboardPanel from "./DashboardPanel";
+import DashboardTile from "./DashboardTile";
 
 type HomeOverviewPanelProps = {
   items: HomeSignal[];
@@ -32,29 +34,7 @@ const toneStyles: Record<
 
 function HomeOverviewPanel({ items }: HomeOverviewPanelProps) {
   return (
-    <section
-      style={{
-        marginTop: "20px",
-        padding: "18px",
-        borderRadius: "12px",
-        background: "#ffffff",
-        border: "1px solid #e5e7eb",
-        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
-      }}
-    >
-      <p
-        style={{
-          margin: "0 0 14px 0",
-          fontSize: "12px",
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: "#6b7280",
-        }}
-      >
-        Home Signals
-      </p>
-
+    <DashboardPanel title="Home Signals">
       <div
         style={{
           display: "grid",
@@ -66,28 +46,13 @@ function HomeOverviewPanel({ items }: HomeOverviewPanelProps) {
           const toneStyle = toneStyles[item.tone];
 
           return (
-            <article
+            <DashboardTile
               key={item.label}
-              style={{
-                padding: "14px 16px",
-                borderRadius: "10px",
-                background: toneStyle.background,
-                border: `1px solid ${toneStyle.border}`,
-              }}
+              title={item.label}
+              background={toneStyle.background}
+              borderColor={toneStyle.border}
+              titleColor={toneStyle.color}
             >
-              <p
-                style={{
-                  margin: "0 0 8px 0",
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                  color: toneStyle.color,
-                }}
-              >
-                {item.label}
-              </p>
-
               <p
                 style={{
                   margin: 0,
@@ -109,11 +74,11 @@ function HomeOverviewPanel({ items }: HomeOverviewPanelProps) {
               >
                 {item.note}
               </p>
-            </article>
+            </DashboardTile>
           );
         })}
       </div>
-    </section>
+    </DashboardPanel>
   );
 }
 

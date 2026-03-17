@@ -1,5 +1,6 @@
 import type { SettingCheck } from "../dashboardData/types";
 import DashboardPanel from "./DashboardPanel";
+import DashboardTile from "./DashboardTile";
 
 type SettingsStatusListProps = {
   items: SettingCheck[];
@@ -42,51 +43,11 @@ function SettingsStatusList({
           const stateStyle = stateStyles[item.state];
 
           return (
-            <article
+            <DashboardTile
               key={item.label}
-              style={{
-                padding: "14px 16px",
-                borderRadius: "10px",
-                background: "#f9fafb",
-                border: "1px solid #f3f4f6",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  gap: "12px",
-                  flexWrap: "wrap",
-                }}
-              >
-                <div>
-                  <p
-                    style={{
-                      margin: "0 0 6px 0",
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      letterSpacing: "0.06em",
-                      textTransform: "uppercase",
-                      color: "#6b7280",
-                    }}
-                  >
-                    {item.label}
-                  </p>
-
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: "15px",
-                      fontWeight: 600,
-                      color: "#111827",
-                    }}
-                  >
-                    {item.value}
-                  </p>
-                </div>
-
-                {onCycleState ? (
+              title={item.label}
+              right={
+                onCycleState ? (
                   <button
                     type="button"
                     onClick={() => onCycleState(item.label)}
@@ -122,8 +83,19 @@ function SettingsStatusList({
                   >
                     {item.state}
                   </span>
-                )}
-              </div>
+                )
+              }
+            >
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "15px",
+                  fontWeight: 600,
+                  color: "#111827",
+                }}
+              >
+                {item.value}
+              </p>
 
               {showNotes && (
                 <p
@@ -137,7 +109,7 @@ function SettingsStatusList({
                   {item.note}
                 </p>
               )}
-            </article>
+            </DashboardTile>
           );
         })}
       </div>

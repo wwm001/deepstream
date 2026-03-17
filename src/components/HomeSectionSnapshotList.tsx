@@ -1,4 +1,6 @@
 import type { HomeSectionSnapshot } from "../dashboardData/types";
+import DashboardPanel from "./DashboardPanel";
+import DashboardTile from "./DashboardTile";
 
 type HomeSectionSnapshotListProps = {
   items: HomeSectionSnapshot[];
@@ -6,29 +8,7 @@ type HomeSectionSnapshotListProps = {
 
 function HomeSectionSnapshotList({ items }: HomeSectionSnapshotListProps) {
   return (
-    <section
-      style={{
-        marginTop: "20px",
-        padding: "18px",
-        borderRadius: "12px",
-        background: "#ffffff",
-        border: "1px solid #e5e7eb",
-        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
-      }}
-    >
-      <p
-        style={{
-          margin: "0 0 14px 0",
-          fontSize: "12px",
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: "#6b7280",
-        }}
-      >
-        Section Map
-      </p>
-
+    <DashboardPanel title="Section Map">
       <div
         style={{
           display: "grid",
@@ -37,34 +17,10 @@ function HomeSectionSnapshotList({ items }: HomeSectionSnapshotListProps) {
         }}
       >
         {items.map((item) => (
-          <article
+          <DashboardTile
             key={item.section}
-            style={{
-              padding: "14px 16px",
-              borderRadius: "10px",
-              background: "#f9fafb",
-              border: "1px solid #f3f4f6",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: "12px",
-                flexWrap: "wrap",
-              }}
-            >
-              <h3
-                style={{
-                  margin: 0,
-                  fontSize: "18px",
-                  color: "#111827",
-                }}
-              >
-                {item.section}
-              </h3>
-
+            title={item.section}
+            right={
               <span
                 style={{
                   display: "inline-block",
@@ -80,11 +36,11 @@ function HomeSectionSnapshotList({ items }: HomeSectionSnapshotListProps) {
               >
                 cards {item.cardCount}
               </span>
-            </div>
-
+            }
+          >
             <p
               style={{
-                margin: "10px 0 0 0",
+                margin: 0,
                 fontSize: "14px",
                 fontWeight: 600,
                 color: "#111827",
@@ -114,10 +70,10 @@ function HomeSectionSnapshotList({ items }: HomeSectionSnapshotListProps) {
             >
               {item.note}
             </p>
-          </article>
+          </DashboardTile>
         ))}
       </div>
-    </section>
+    </DashboardPanel>
   );
 }
 
