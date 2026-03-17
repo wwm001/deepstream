@@ -4,7 +4,7 @@ import SectionHeader from "./SectionHeader";
 import DashboardSummary from "./DashboardSummary";
 import DashboardDetailPanel from "./DashboardDetailPanel";
 import DashboardExtraContent from "./DashboardExtraContent";
-import { dashboardSections } from "../dashboardCards";
+import { dashboardSections } from "../dashboardData/sections";
 import type { NavigationSection } from "../navigationItems";
 
 type DashboardProps = {

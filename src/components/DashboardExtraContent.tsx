@@ -1,11 +1,12 @@
+import type { ReactNode } from "react";
 import type { NavigationSection } from "../navigationItems";
+import { settingsChecks } from "../dashboardData/settingsData";
+import { libraryAssets } from "../dashboardData/libraryData";
+import { streamEvents } from "../dashboardData/streamData";
 import {
-  settingsChecks,
-  libraryAssets,
-  streamEvents,
   homeSignals,
   homeSectionSnapshots,
-} from "../dashboardCards";
+} from "../dashboardData/homeData";
 import SettingsStatusList from "./SettingsStatusList";
 import LibraryAssetList from "./LibraryAssetList";
 import StreamEventTimeline from "./StreamEventTimeline";
@@ -16,7 +17,7 @@ type DashboardExtraContentProps = {
   currentSection: NavigationSection;
 };
 
-const dashboardExtraContentMap: Record<NavigationSection, JSX.Element> = {
+const dashboardExtraContentMap: Record<NavigationSection, ReactNode> = {
   ホーム: (
     <>
       <HomeOverviewPanel items={homeSignals} />
@@ -31,7 +32,7 @@ const dashboardExtraContentMap: Record<NavigationSection, JSX.Element> = {
 function DashboardExtraContent({
   currentSection,
 }: DashboardExtraContentProps) {
-  return dashboardExtraContentMap[currentSection];
+  return <>{dashboardExtraContentMap[currentSection]}</>;
 }
 
 export default DashboardExtraContent;

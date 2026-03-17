@@ -1,4 +1,4 @@
-import type { HomeSectionSnapshot } from "../dashboardCards";
+import type { HomeSectionSnapshot } from "../dashboardData/types";
 
 type HomeSectionSnapshotListProps = {
   items: HomeSectionSnapshot[];

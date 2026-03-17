@@ -1,9 +1,7 @@
-import type { SettingCheck } from "../data/dashboard";
+import type { SettingCheck } from "../dashboardData/types";
 
 type SettingsStatusListProps = {
   items: SettingCheck[];
-  showNotes: boolean;
-  onCycleState: (label: string) => void;
 };
 
 const stateStyles: Record<
@@ -24,14 +22,11 @@ const stateStyles: Record<
   },
 };
 
-function SettingsStatusList({
-  items,
-  showNotes,
-  onCycleState,
-}: SettingsStatusListProps) {
+function SettingsStatusList({ items }: SettingsStatusListProps) {
   return (
     <section
       style={{
+        marginTop: "20px",
         padding: "18px",
         borderRadius: "12px",
         background: "#ffffff",
@@ -58,28 +53,6 @@ function SettingsStatusList({
           gap: "12px",
         }}
       >
-        {items.length === 0 && (
-          <article
-            style={{
-              padding: "14px 16px",
-              borderRadius: "10px",
-              background: "#f9fafb",
-              border: "1px solid #f3f4f6",
-            }}
-          >
-            <p
-              style={{
-                margin: 0,
-                fontSize: "14px",
-                lineHeight: 1.6,
-                color: "#4b5563",
-              }}
-            >
-              該当するチェック項目はありません。
-            </p>
-          </article>
-        )}
-
         {items.map((item) => {
           const stateStyle = stateStyles[item.state];
 
@@ -128,63 +101,33 @@ function SettingsStatusList({
                   </p>
                 </div>
 
-                <div
+                <span
                   style={{
-                    display: "flex",
-                    gap: "8px",
-                    flexWrap: "wrap",
-                    alignItems: "center",
+                    display: "inline-block",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    color: stateStyle.color,
+                    background: stateStyle.background,
+                    padding: "4px 8px",
+                    borderRadius: "999px",
                   }}
                 >
-                  <span
-                    style={{
-                      display: "inline-block",
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      letterSpacing: "0.06em",
-                      textTransform: "uppercase",
-                      color: stateStyle.color,
-                      background: stateStyle.background,
-                      padding: "4px 8px",
-                      borderRadius: "999px",
-                    }}
-                  >
-                    {item.state}
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={() => onCycleState(item.label)}
-                    style={{
-                      border: "1px solid #d1d5db",
-                      background: "#ffffff",
-                      color: "#111827",
-                      borderRadius: "999px",
-                      padding: "4px 8px",
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      letterSpacing: "0.06em",
-                      textTransform: "uppercase",
-                      cursor: "pointer",
-                    }}
-                  >
-                    cycle
-                  </button>
-                </div>
+                  {item.state}
+                </span>
               </div>
 
-              {showNotes && (
-                <p
-                  style={{
-                    margin: "10px 0 0 0",
-                    color: "#4b5563",
-                    lineHeight: 1.6,
-                    fontSize: "14px",
-                  }}
-                >
-                  {item.note}
-                </p>
-              )}
+              <p
+                style={{
+                  margin: "10px 0 0 0",
+                  color: "#4b5563",
+                  lineHeight: 1.6,
+                  fontSize: "14px",
+                }}
+              >
+                {item.note}
+              </p>
             </article>
           );
         })}

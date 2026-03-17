@@ -1,4 +1,4 @@
-import type { HomeSignal } from "../dashboardCards";
+import type { HomeSignal } from "../dashboardData/types";
 
 type HomeOverviewPanelProps = {
   items: HomeSignal[];
