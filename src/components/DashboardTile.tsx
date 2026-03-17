@@ -1,4 +1,4 @@
-import type { KeyboardEvent, ReactNode } from "react";
+import { useState, type KeyboardEvent, type ReactNode } from "react";
 
 type DashboardTileProps = {
   title?: string;
@@ -19,6 +19,11 @@ function DashboardTile({
   titleColor = "#6b7280",
   onClick,
 }: DashboardTileProps) {
+  const [isHovered, setIsHovered] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+
+  const isInteractive = Boolean(onClick);
+
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (!onClick) return;
 
@@ -30,16 +35,31 @@ function DashboardTile({
 
   return (
     <article
-      role={onClick ? "button" : undefined}
-      tabIndex={onClick ? 0 : undefined}
+      role={isInteractive ? "button" : undefined}
+      tabIndex={isInteractive ? 0 : undefined}
       onClick={onClick}
       onKeyDown={handleKeyDown}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
       style={{
         padding: "14px 16px",
         borderRadius: "10px",
         background,
         border: `1px solid ${borderColor}`,
-        cursor: onClick ? "pointer" : "default",
+        cursor: isInteractive ? "pointer" : "default",
+        transform:
+          isInteractive && isHovered ? "translateY(-1px)" : "translateY(0)",
+        boxShadow:
+          isInteractive && (isHovered || isFocused)
+            ? "0 6px 14px rgba(0, 0, 0, 0.08)"
+            : "none",
+        outline:
+          isInteractive && isFocused ? "2px solid #93c5fd" : "none",
+        outlineOffset: isInteractive && isFocused ? "2px" : undefined,
+        transition:
+          "transform 140ms ease, box-shadow 140ms ease, outline 140ms ease",
       }}
     >
       {(title || right) && (
