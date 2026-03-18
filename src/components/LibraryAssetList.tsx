@@ -1,4 +1,10 @@
-import { useMemo, useState, type FormEvent } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 import type { LibraryAsset } from "../dashboardData/types";
 import DashboardPanel from "./DashboardPanel";
 import DashboardTile from "./DashboardTile";
@@ -15,6 +21,12 @@ type LibraryAssetListProps = {
   onAddAsset?: (asset: Omit<LibraryAsset, "id">) => void;
   onResetAssets?: () => void;
 };
+
+type AssetFormErrors = Partial<Record<"name" | "role" | "note", string>>;
+
+const NAME_MAX_LENGTH = 80;
+const ROLE_MAX_LENGTH = 80;
+const NOTE_MAX_LENGTH = 300;
 
 const stateStyles: Record<
   LibraryAsset["state"],
@@ -34,6 +46,34 @@ const stateStyles: Record<
   },
 };
 
+function validateAssetInput(input: {
+  name: string;
+  role: string;
+  note: string;
+}): AssetFormErrors {
+  const errors: AssetFormErrors = {};
+
+  if (!input.name) {
+    errors.name = "name を入力してください。";
+  } else if (input.name.length > NAME_MAX_LENGTH) {
+    errors.name = `name は ${NAME_MAX_LENGTH} 文字以内で入力してください。`;
+  }
+
+  if (!input.role) {
+    errors.role = "role を入力してください。";
+  } else if (input.role.length > ROLE_MAX_LENGTH) {
+    errors.role = `role は ${ROLE_MAX_LENGTH} 文字以内で入力してください。`;
+  }
+
+  if (!input.note) {
+    errors.note = "note を入力してください。";
+  } else if (input.note.length > NOTE_MAX_LENGTH) {
+    errors.note = `note は ${NOTE_MAX_LENGTH} 文字以内で入力してください。`;
+  }
+
+  return errors;
+}
+
 function LibraryAssetList({
   items,
   onRemoveAsset,
@@ -44,6 +84,13 @@ function LibraryAssetList({
   const [role, setRole] = useState("");
   const [note, setNote] = useState("");
   const [state, setState] = useState<LibraryAsset["state"]>("active");
+  const [errors, setErrors] = useState<AssetFormErrors>({});
+  const [submitMessage, setSubmitMessage] = useState("");
+
+  const formRef = useRef<HTMLFormElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const roleInputRef = useRef<HTMLInputElement>(null);
+  const noteTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const trimmedName = name.trim();
   const trimmedRole = role.trim();
@@ -61,7 +108,28 @@ function LibraryAssetList({
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!canSubmit || !onAddAsset) {
+    if (!onAddAsset) {
+      return;
+    }
+
+    const nextErrors = validateAssetInput({
+      name: trimmedName,
+      role: trimmedRole,
+      note: trimmedNote,
+    });
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      setSubmitMessage("");
+
+      if (nextErrors.name) {
+        nameInputRef.current?.focus();
+      } else if (nextErrors.role) {
+        roleInputRef.current?.focus();
+      } else if (nextErrors.note) {
+        noteTextareaRef.current?.focus();
+      }
+
       return;
     }
 
@@ -76,6 +144,16 @@ function LibraryAssetList({
     setRole("");
     setNote("");
     setState("active");
+    setErrors({});
+    setSubmitMessage("asset を追加しました。");
+    nameInputRef.current?.focus();
+  };
+
+  const handleNoteKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && canSubmit) {
+      event.preventDefault();
+      formRef.current?.requestSubmit();
+    }
   };
 
   return (
@@ -90,6 +168,7 @@ function LibraryAssetList({
         >
           {onAddAsset && (
             <form
+              ref={formRef}
               onSubmit={handleSubmit}
               style={{
                 display: "grid",
@@ -107,39 +186,85 @@ function LibraryAssetList({
                   gap: "10px",
                 }}
               >
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="name"
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: "10px",
-                    border: "1px solid #d1d5db",
-                    background: "#ffffff",
-                    color: "#111827",
-                    fontSize: "14px",
-                    boxSizing: "border-box",
-                  }}
-                />
+                <div>
+                  <input
+                    ref={nameInputRef}
+                    type="text"
+                    value={name}
+                    maxLength={NAME_MAX_LENGTH}
+                    onChange={(event) => {
+                      setName(event.target.value);
+                      setErrors((current) => ({ ...current, name: undefined }));
+                      setSubmitMessage("");
+                    }}
+                    placeholder="name"
+                    aria-invalid={Boolean(errors.name)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: "10px",
+                      border: errors.name
+                        ? "1px solid #dc2626"
+                        : "1px solid #d1d5db",
+                      background: "#ffffff",
+                      color: "#111827",
+                      fontSize: "14px",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  {errors.name && (
+                    <p
+                      style={{
+                        margin: "6px 0 0 0",
+                        color: "#b91c1c",
+                        fontSize: "12px",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {errors.name}
+                    </p>
+                  )}
+                </div>
 
-                <input
-                  type="text"
-                  value={role}
-                  onChange={(event) => setRole(event.target.value)}
-                  placeholder="role"
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: "10px",
-                    border: "1px solid #d1d5db",
-                    background: "#ffffff",
-                    color: "#111827",
-                    fontSize: "14px",
-                    boxSizing: "border-box",
-                  }}
-                />
+                <div>
+                  <input
+                    ref={roleInputRef}
+                    type="text"
+                    value={role}
+                    maxLength={ROLE_MAX_LENGTH}
+                    onChange={(event) => {
+                      setRole(event.target.value);
+                      setErrors((current) => ({ ...current, role: undefined }));
+                      setSubmitMessage("");
+                    }}
+                    placeholder="role"
+                    aria-invalid={Boolean(errors.role)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: "10px",
+                      border: errors.role
+                        ? "1px solid #dc2626"
+                        : "1px solid #d1d5db",
+                      background: "#ffffff",
+                      color: "#111827",
+                      fontSize: "14px",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  {errors.role && (
+                    <p
+                      style={{
+                        margin: "6px 0 0 0",
+                        color: "#b91c1c",
+                        fontSize: "12px",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {errors.role}
+                    </p>
+                  )}
+                </div>
 
                 <select
                   value={state}
@@ -163,24 +288,48 @@ function LibraryAssetList({
                 </select>
               </div>
 
-              <textarea
-                value={note}
-                onChange={(event) => setNote(event.target.value)}
-                placeholder="note"
-                rows={3}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: "10px",
-                  border: "1px solid #d1d5db",
-                  background: "#ffffff",
-                  color: "#111827",
-                  fontSize: "14px",
-                  boxSizing: "border-box",
-                  resize: "vertical",
-                  fontFamily: "inherit",
-                }}
-              />
+              <div>
+                <textarea
+                  ref={noteTextareaRef}
+                  value={note}
+                  maxLength={NOTE_MAX_LENGTH}
+                  onChange={(event) => {
+                    setNote(event.target.value);
+                    setErrors((current) => ({ ...current, note: undefined }));
+                    setSubmitMessage("");
+                  }}
+                  onKeyDown={handleNoteKeyDown}
+                  placeholder="note"
+                  rows={3}
+                  aria-invalid={Boolean(errors.note)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "10px",
+                    border: errors.note
+                      ? "1px solid #dc2626"
+                      : "1px solid #d1d5db",
+                    background: "#ffffff",
+                    color: "#111827",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                    resize: "vertical",
+                    fontFamily: "inherit",
+                  }}
+                />
+                {errors.note && (
+                  <p
+                    style={{
+                      margin: "6px 0 0 0",
+                      color: "#b91c1c",
+                      fontSize: "12px",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {errors.note}
+                  </p>
+                )}
+              </div>
 
               <div
                 style={{
@@ -199,7 +348,7 @@ function LibraryAssetList({
                   }}
                 >
                   {canSubmit
-                    ? "Enter または add asset で追加できます"
+                    ? "Enter または add asset。textarea では Ctrl/Cmd+Enter で送信できます"
                     : "name / role / note を入れると追加できます"}
                 </span>
 
@@ -209,6 +358,19 @@ function LibraryAssetList({
                   disabled={!canSubmit}
                 />
               </div>
+
+              {submitMessage && (
+                <p
+                  style={{
+                    margin: 0,
+                    color: "#047857",
+                    fontSize: "12px",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {submitMessage}
+                </p>
+              )}
             </form>
           )}
 

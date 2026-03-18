@@ -1,4 +1,10 @@
-import { useMemo, useState, type FormEvent } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 import type { StreamEvent } from "../dashboardData/types";
 import DashboardPanel from "./DashboardPanel";
 import DashboardBadge from "./DashboardBadge";
@@ -14,6 +20,11 @@ type StreamEventTimelineProps = {
   onAddEvent?: (event: Omit<StreamEvent, "id">) => void;
   onResetEvents?: () => void;
 };
+
+type StreamFormErrors = Partial<Record<"title" | "detail", string>>;
+
+const TITLE_MAX_LENGTH = 80;
+const DETAIL_MAX_LENGTH = 300;
 
 const phaseStyles: Record<
   StreamEvent["phase"],
@@ -36,6 +47,27 @@ const phaseStyles: Record<
   },
 };
 
+function validateStreamInput(input: {
+  title: string;
+  detail: string;
+}): StreamFormErrors {
+  const errors: StreamFormErrors = {};
+
+  if (!input.title) {
+    errors.title = "title を入力してください。";
+  } else if (input.title.length > TITLE_MAX_LENGTH) {
+    errors.title = `title は ${TITLE_MAX_LENGTH} 文字以内で入力してください。`;
+  }
+
+  if (!input.detail) {
+    errors.detail = "detail を入力してください。";
+  } else if (input.detail.length > DETAIL_MAX_LENGTH) {
+    errors.detail = `detail は ${DETAIL_MAX_LENGTH} 文字以内で入力してください。`;
+  }
+
+  return errors;
+}
+
 function StreamEventTimeline({
   items,
   onRemoveEvent,
@@ -45,6 +77,12 @@ function StreamEventTimeline({
   const [title, setTitle] = useState("");
   const [detail, setDetail] = useState("");
   const [phase, setPhase] = useState<StreamEvent["phase"]>("current");
+  const [errors, setErrors] = useState<StreamFormErrors>({});
+  const [submitMessage, setSubmitMessage] = useState("");
+
+  const formRef = useRef<HTMLFormElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const detailTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const trimmedTitle = title.trim();
   const trimmedDetail = detail.trim();
@@ -60,7 +98,25 @@ function StreamEventTimeline({
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!canSubmit || !onAddEvent) {
+    if (!onAddEvent) {
+      return;
+    }
+
+    const nextErrors = validateStreamInput({
+      title: trimmedTitle,
+      detail: trimmedDetail,
+    });
+
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      setSubmitMessage("");
+
+      if (nextErrors.title) {
+        titleInputRef.current?.focus();
+      } else if (nextErrors.detail) {
+        detailTextareaRef.current?.focus();
+      }
+
       return;
     }
 
@@ -73,6 +129,16 @@ function StreamEventTimeline({
     setTitle("");
     setDetail("");
     setPhase("current");
+    setErrors({});
+    setSubmitMessage("event を追加しました。");
+    titleInputRef.current?.focus();
+  };
+
+  const handleDetailKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && canSubmit) {
+      event.preventDefault();
+      formRef.current?.requestSubmit();
+    }
   };
 
   return (
@@ -87,6 +153,7 @@ function StreamEventTimeline({
         >
           {onAddEvent && (
             <form
+              ref={formRef}
               onSubmit={handleSubmit}
               style={{
                 display: "grid",
@@ -104,22 +171,45 @@ function StreamEventTimeline({
                   gap: "10px",
                 }}
               >
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  placeholder="title"
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: "10px",
-                    border: "1px solid #d1d5db",
-                    background: "#ffffff",
-                    color: "#111827",
-                    fontSize: "14px",
-                    boxSizing: "border-box",
-                  }}
-                />
+                <div>
+                  <input
+                    ref={titleInputRef}
+                    type="text"
+                    value={title}
+                    maxLength={TITLE_MAX_LENGTH}
+                    onChange={(event) => {
+                      setTitle(event.target.value);
+                      setErrors((current) => ({ ...current, title: undefined }));
+                      setSubmitMessage("");
+                    }}
+                    placeholder="title"
+                    aria-invalid={Boolean(errors.title)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      borderRadius: "10px",
+                      border: errors.title
+                        ? "1px solid #dc2626"
+                        : "1px solid #d1d5db",
+                      background: "#ffffff",
+                      color: "#111827",
+                      fontSize: "14px",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  {errors.title && (
+                    <p
+                      style={{
+                        margin: "6px 0 0 0",
+                        color: "#b91c1c",
+                        fontSize: "12px",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {errors.title}
+                    </p>
+                  )}
+                </div>
 
                 <select
                   value={phase}
@@ -143,24 +233,48 @@ function StreamEventTimeline({
                 </select>
               </div>
 
-              <textarea
-                value={detail}
-                onChange={(event) => setDetail(event.target.value)}
-                placeholder="detail"
-                rows={3}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: "10px",
-                  border: "1px solid #d1d5db",
-                  background: "#ffffff",
-                  color: "#111827",
-                  fontSize: "14px",
-                  boxSizing: "border-box",
-                  resize: "vertical",
-                  fontFamily: "inherit",
-                }}
-              />
+              <div>
+                <textarea
+                  ref={detailTextareaRef}
+                  value={detail}
+                  maxLength={DETAIL_MAX_LENGTH}
+                  onChange={(event) => {
+                    setDetail(event.target.value);
+                    setErrors((current) => ({ ...current, detail: undefined }));
+                    setSubmitMessage("");
+                  }}
+                  onKeyDown={handleDetailKeyDown}
+                  placeholder="detail"
+                  rows={3}
+                  aria-invalid={Boolean(errors.detail)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "10px",
+                    border: errors.detail
+                      ? "1px solid #dc2626"
+                      : "1px solid #d1d5db",
+                    background: "#ffffff",
+                    color: "#111827",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                    resize: "vertical",
+                    fontFamily: "inherit",
+                  }}
+                />
+                {errors.detail && (
+                  <p
+                    style={{
+                      margin: "6px 0 0 0",
+                      color: "#b91c1c",
+                      fontSize: "12px",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {errors.detail}
+                  </p>
+                )}
+              </div>
 
               <div
                 style={{
@@ -179,7 +293,7 @@ function StreamEventTimeline({
                   }}
                 >
                   {canSubmit
-                    ? "Enter または add event で追加できます"
+                    ? "Enter または add event。textarea では Ctrl/Cmd+Enter で送信できます"
                     : "title と detail を入れると追加できます"}
                 </span>
 
@@ -189,6 +303,19 @@ function StreamEventTimeline({
                   disabled={!canSubmit}
                 />
               </div>
+
+              {submitMessage && (
+                <p
+                  style={{
+                    margin: 0,
+                    color: "#047857",
+                    fontSize: "12px",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {submitMessage}
+                </p>
+              )}
             </form>
           )}
 
