@@ -3,13 +3,10 @@ import DashboardPanel from "./DashboardPanel";
 import DashboardBadge from "./DashboardBadge";
 import DashboardActionButton from "./DashboardActionButton";
 
-type StreamEventItem = StreamEvent & {
-  id?: string;
-};
-
 type StreamEventTimelineProps = {
-  items: StreamEventItem[];
+  items: StreamEvent[];
   onRemoveEvent?: (eventId: string) => void;
+  onResetEvents?: () => void;
 };
 
 const phaseStyles: Record<
@@ -36,9 +33,20 @@ const phaseStyles: Record<
 function StreamEventTimeline({
   items,
   onRemoveEvent,
+  onResetEvents,
 }: StreamEventTimelineProps) {
   return (
-    <DashboardPanel title="Stream Timeline">
+    <DashboardPanel
+      title="Stream Timeline"
+      right={
+        onResetEvents ? (
+          <DashboardActionButton
+            label="reset"
+            onClick={onResetEvents}
+          />
+        ) : undefined
+      }
+    >
       <div
         style={{
           display: "grid",
@@ -50,7 +58,7 @@ function StreamEventTimeline({
 
           return (
             <article
-              key={item.id ?? `${item.title}-${index}`}
+              key={item.id}
               style={{
                 display: "grid",
                 gridTemplateColumns: "28px 1fr",
@@ -129,10 +137,10 @@ function StreamEventTimeline({
                       borderColor={phaseStyle.border}
                     />
 
-                    {onRemoveEvent && item.id && (
+                    {onRemoveEvent && (
                       <DashboardActionButton
                         label="remove"
-                        onClick={() => onRemoveEvent(item.id!)}
+                        onClick={() => onRemoveEvent(item.id)}
                       />
                     )}
                   </div>

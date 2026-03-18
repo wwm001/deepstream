@@ -2,10 +2,11 @@ import type { ReactNode } from "react";
 
 type DashboardPanelProps = {
   title: string;
+  right?: ReactNode;
   children: ReactNode;
 };
 
-function DashboardPanel({ title, children }: DashboardPanelProps) {
+function DashboardPanel({ title, right, children }: DashboardPanelProps) {
   return (
     <section
       style={{
@@ -17,18 +18,31 @@ function DashboardPanel({ title, children }: DashboardPanelProps) {
         boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
       }}
     >
-      <p
+      <div
         style={{
-          margin: "0 0 14px 0",
-          fontSize: "12px",
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: "#6b7280",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: "12px",
+          flexWrap: "wrap",
+          marginBottom: "14px",
         }}
       >
-        {title}
-      </p>
+        <p
+          style={{
+            margin: 0,
+            fontSize: "12px",
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "#6b7280",
+          }}
+        >
+          {title}
+        </p>
+
+        {right}
+      </div>
 
       {children}
     </section>

@@ -4,13 +4,10 @@ import DashboardTile from "./DashboardTile";
 import DashboardBadge from "./DashboardBadge";
 import DashboardActionButton from "./DashboardActionButton";
 
-type LibraryAssetItem = LibraryAsset & {
-  id?: string;
-};
-
 type LibraryAssetListProps = {
-  items: LibraryAssetItem[];
+  items: LibraryAsset[];
   onRemoveAsset?: (assetId: string) => void;
+  onResetAssets?: () => void;
 };
 
 const stateStyles: Record<
@@ -34,9 +31,20 @@ const stateStyles: Record<
 function LibraryAssetList({
   items,
   onRemoveAsset,
+  onResetAssets,
 }: LibraryAssetListProps) {
   return (
-    <DashboardPanel title="Component Assets">
+    <DashboardPanel
+      title="Component Assets"
+      right={
+        onResetAssets ? (
+          <DashboardActionButton
+            label="reset"
+            onClick={onResetAssets}
+          />
+        ) : undefined
+      }
+    >
       <div
         style={{
           display: "grid",
@@ -49,7 +57,7 @@ function LibraryAssetList({
 
           return (
             <DashboardTile
-              key={item.id ?? item.name}
+              key={item.id}
               title={item.name}
               right={
                 <div
@@ -66,10 +74,10 @@ function LibraryAssetList({
                     background={stateStyle.background}
                   />
 
-                  {onRemoveAsset && item.id && (
+                  {onRemoveAsset && (
                     <DashboardActionButton
                       label="remove"
-                      onClick={() => onRemoveAsset(item.id!)}
+                      onClick={() => onRemoveAsset(item.id)}
                     />
                   )}
                 </div>

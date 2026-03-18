@@ -9,7 +9,11 @@ import { dashboardSections } from "../dashboardData/sections";
 import { settingsChecks as initialSettingsChecks } from "../dashboardData/settingsData";
 import { libraryAssets as initialLibraryAssets } from "../dashboardData/libraryData";
 import { streamEvents as initialStreamEvents } from "../dashboardData/streamData";
-import type { SettingCheck, LibraryAsset, StreamEvent } from "../dashboardData/types";
+import type {
+  SettingCheck,
+  LibraryAsset,
+  StreamEvent,
+} from "../dashboardData/types";
 import type { NavigationSection } from "../navigationItems";
 
 type DashboardProps = {
@@ -17,12 +21,14 @@ type DashboardProps = {
   onSelectSection: (section: NavigationSection) => void;
 };
 
-const nextSettingStateMap: Record<SettingCheck["state"], SettingCheck["state"]> =
-  {
-    ok: "watch",
-    watch: "next",
-    next: "ok",
-  };
+const nextSettingStateMap: Record<
+  SettingCheck["state"],
+  SettingCheck["state"]
+> = {
+  ok: "watch",
+  watch: "next",
+  next: "ok",
+};
 
 function Dashboard({
   currentSection,
@@ -62,6 +68,18 @@ function Dashboard({
     );
   };
 
+  const handleResetSettings = () => {
+    setSettingsItems(initialSettingsChecks);
+  };
+
+  const handleResetLibrary = () => {
+    setLibraryItems(initialLibraryAssets);
+  };
+
+  const handleResetStream = () => {
+    setStreamItems(initialStreamEvents);
+  };
+
   return (
     <section>
       <SectionHeader
@@ -96,6 +114,9 @@ function Dashboard({
         onCycleSettingState={handleCycleSettingState}
         onRemoveLibraryAsset={handleRemoveLibraryAsset}
         onRemoveStreamEvent={handleRemoveStreamEvent}
+        onResetSettings={handleResetSettings}
+        onResetLibrary={handleResetLibrary}
+        onResetStream={handleResetStream}
       />
 
       <div

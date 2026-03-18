@@ -24,6 +24,9 @@ type DashboardExtraContentProps = {
   onCycleSettingState: (label: string) => void;
   onRemoveLibraryAsset: (assetId: string) => void;
   onRemoveStreamEvent: (eventId: string) => void;
+  onResetSettings: () => void;
+  onResetLibrary: () => void;
+  onResetStream: () => void;
 };
 
 function DashboardExtraContent({
@@ -35,6 +38,9 @@ function DashboardExtraContent({
   onCycleSettingState,
   onRemoveLibraryAsset,
   onRemoveStreamEvent,
+  onResetSettings,
+  onResetLibrary,
+  onResetStream,
 }: DashboardExtraContentProps) {
   const watchSettingCount = settingsItems.filter(
     (item) => item.state === "watch"
@@ -62,18 +68,21 @@ function DashboardExtraContent({
       <StreamEventTimeline
         items={streamItems}
         onRemoveEvent={onRemoveStreamEvent}
+        onResetEvents={onResetStream}
       />
     ),
     ライブラリ: (
       <LibraryAssetList
         items={libraryItems}
         onRemoveAsset={onRemoveLibraryAsset}
+        onResetAssets={onResetLibrary}
       />
     ),
     設定: (
       <SettingsStatusList
         items={settingsItems}
         onCycleState={onCycleSettingState}
+        onResetAll={onResetSettings}
       />
     ),
   };

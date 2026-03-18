@@ -2,11 +2,13 @@ import type { SettingCheck } from "../dashboardData/types";
 import DashboardPanel from "./DashboardPanel";
 import DashboardTile from "./DashboardTile";
 import DashboardBadge from "./DashboardBadge";
+import DashboardActionButton from "./DashboardActionButton";
 
 type SettingsStatusListProps = {
   items: SettingCheck[];
   showNotes?: boolean;
   onCycleState?: (label: string) => void;
+  onResetAll?: () => void;
 };
 
 const stateStyles: Record<
@@ -31,9 +33,20 @@ function SettingsStatusList({
   items,
   showNotes = true,
   onCycleState,
+  onResetAll,
 }: SettingsStatusListProps) {
   return (
-    <DashboardPanel title="Environment Checks">
+    <DashboardPanel
+      title="Environment Checks"
+      right={
+        onResetAll ? (
+          <DashboardActionButton
+            label="reset"
+            onClick={onResetAll}
+          />
+        ) : undefined
+      }
+    >
       <div
         style={{
           display: "grid",
