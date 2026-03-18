@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 import type { NavigationSection } from "../navigationItems";
-import { settingsChecks } from "../dashboardData/settingsData";
-import { libraryAssets } from "../dashboardData/libraryData";
-import { streamEvents } from "../dashboardData/streamData";
+import type {
+  SettingCheck,
+  LibraryAsset,
+  StreamEvent,
+} from "../dashboardData/types";
 import {
-  homeSignals,
-  homeSectionSnapshots,
+  createHomeSignals,
+  createHomeSectionSnapshots,
 } from "../dashboardData/homeData";
 import SettingsStatusList from "./SettingsStatusList";
 import LibraryAssetList from "./LibraryAssetList";
@@ -16,12 +18,36 @@ import HomeSectionSnapshotList from "./HomeSectionSnapshotList";
 type DashboardExtraContentProps = {
   currentSection: NavigationSection;
   onSelectSection: (section: NavigationSection) => void;
+  settingsItems: SettingCheck[];
+  libraryItems: LibraryAsset[];
+  streamItems: StreamEvent[];
+  onCycleSettingState: (label: string) => void;
+  onRemoveLibraryAsset: (assetId: string) => void;
+  onRemoveStreamEvent: (eventId: string) => void;
 };
 
 function DashboardExtraContent({
   currentSection,
   onSelectSection,
+  settingsItems,
+  libraryItems,
+  streamItems,
+  onCycleSettingState,
+  onRemoveLibraryAsset,
+  onRemoveStreamEvent,
 }: DashboardExtraContentProps) {
+  const watchSettingCount = settingsItems.filter(
+    (item) => item.state === "watch"
+  ).length;
+
+  const homeSignals = createHomeSignals({
+    streamEventCount: streamItems.length,
+    libraryAssetCount: libraryItems.length,
+    watchSettingCount,
+  });
+
+  const homeSectionSnapshots = createHomeSectionSnapshots();
+
   const dashboardExtraContentMap: Record<NavigationSection, ReactNode> = {
     ホーム: (
       <>
@@ -32,9 +58,24 @@ function DashboardExtraContent({
         />
       </>
     ),
-    ストリーム: <StreamEventTimeline items={streamEvents} />,
-    ライブラリ: <LibraryAssetList items={libraryAssets} />,
-    設定: <SettingsStatusList items={settingsChecks} />,
+    ストリーム: (
+      <StreamEventTimeline
+        items={streamItems}
+        onRemoveEvent={onRemoveStreamEvent}
+      />
+    ),
+    ライブラリ: (
+      <LibraryAssetList
+        items={libraryItems}
+        onRemoveAsset={onRemoveLibraryAsset}
+      />
+    ),
+    設定: (
+      <SettingsStatusList
+        items={settingsItems}
+        onCycleState={onCycleSettingState}
+      />
+    ),
   };
 
   return <>{dashboardExtraContentMap[currentSection]}</>;
