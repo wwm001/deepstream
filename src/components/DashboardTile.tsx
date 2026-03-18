@@ -33,6 +33,23 @@ function DashboardTile({
     }
   };
 
+  const getTransform = () => {
+    if (!isHovered) return "translateY(0)";
+    return isInteractive ? "translateY(-1px)" : "translateY(-0.5px)";
+  };
+
+  const getBoxShadow = () => {
+    if (isInteractive && (isHovered || isFocused)) {
+      return "0 6px 14px rgba(0, 0, 0, 0.08)";
+    }
+
+    if (!isInteractive && isHovered) {
+      return "0 3px 8px rgba(0, 0, 0, 0.05)";
+    }
+
+    return "none";
+  };
+
   return (
     <article
       role={isInteractive ? "button" : undefined}
@@ -49,12 +66,8 @@ function DashboardTile({
         background,
         border: `1px solid ${borderColor}`,
         cursor: isInteractive ? "pointer" : "default",
-        transform:
-          isInteractive && isHovered ? "translateY(-1px)" : "translateY(0)",
-        boxShadow:
-          isInteractive && (isHovered || isFocused)
-            ? "0 6px 14px rgba(0, 0, 0, 0.08)"
-            : "none",
+        transform: getTransform(),
+        boxShadow: getBoxShadow(),
         outline:
           isInteractive && isFocused ? "2px solid #93c5fd" : "none",
         outlineOffset: isInteractive && isFocused ? "2px" : undefined,
