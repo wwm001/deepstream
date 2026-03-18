@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { StreamEvent } from "../dashboardData/types";
 import DashboardPanel from "./DashboardPanel";
 import DashboardBadge from "./DashboardBadge";
@@ -6,6 +7,7 @@ import DashboardActionButton from "./DashboardActionButton";
 type StreamEventTimelineProps = {
   items: StreamEvent[];
   onRemoveEvent?: (eventId: string) => void;
+  onAddEvent?: (event: Omit<StreamEvent, "id">) => void;
   onResetEvents?: () => void;
 };
 
@@ -33,8 +35,30 @@ const phaseStyles: Record<
 function StreamEventTimeline({
   items,
   onRemoveEvent,
+  onAddEvent,
   onResetEvents,
 }: StreamEventTimelineProps) {
+  const [title, setTitle] = useState("");
+  const [detail, setDetail] = useState("");
+  const [phase, setPhase] = useState<StreamEvent["phase"]>("next");
+
+  const handleSubmit = () => {
+    const trimmedTitle = title.trim();
+    const trimmedDetail = detail.trim();
+
+    if (!onAddEvent || !trimmedTitle || !trimmedDetail) return;
+
+    onAddEvent({
+      title: trimmedTitle,
+      detail: trimmedDetail,
+      phase,
+    });
+
+    setTitle("");
+    setDetail("");
+    setPhase("next");
+  };
+
   return (
     <DashboardPanel
       title="Stream Timeline"
@@ -47,6 +71,66 @@ function StreamEventTimeline({
         ) : undefined
       }
     >
+      {onAddEvent && (
+        <div
+          style={{
+            display: "grid",
+            gap: "10px",
+            marginBottom: "16px",
+            padding: "14px 16px",
+            borderRadius: "10px",
+            background: "#f9fafb",
+            border: "1px solid #f3f4f6",
+          }}
+        >
+          <input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="event title"
+            style={{
+              padding: "10px 12px",
+              borderRadius: "8px",
+              border: "1px solid #d1d5db",
+              fontSize: "14px",
+            }}
+          />
+          <input
+            value={detail}
+            onChange={(event) => setDetail(event.target.value)}
+            placeholder="detail"
+            style={{
+              padding: "10px 12px",
+              borderRadius: "8px",
+              border: "1px solid #d1d5db",
+              fontSize: "14px",
+            }}
+          />
+          <select
+            value={phase}
+            onChange={(event) =>
+              setPhase(event.target.value as StreamEvent["phase"])
+            }
+            style={{
+              padding: "10px 12px",
+              borderRadius: "8px",
+              border: "1px solid #d1d5db",
+              fontSize: "14px",
+              background: "#ffffff",
+            }}
+          >
+            <option value="done">done</option>
+            <option value="current">current</option>
+            <option value="next">next</option>
+          </select>
+          <div>
+            <DashboardActionButton
+              label="add event"
+              onClick={handleSubmit}
+            />
+          </div>
+        </div>
+      )}
+
       <div
         style={{
           display: "grid",

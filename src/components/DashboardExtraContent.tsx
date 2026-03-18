@@ -24,6 +24,8 @@ type DashboardExtraContentProps = {
   onCycleSettingState: (label: string) => void;
   onRemoveLibraryAsset: (assetId: string) => void;
   onRemoveStreamEvent: (eventId: string) => void;
+  onAddLibraryAsset: (asset: Omit<LibraryAsset, "id">) => void;
+  onAddStreamEvent: (event: Omit<StreamEvent, "id">) => void;
   onResetSettings: () => void;
   onResetLibrary: () => void;
   onResetStream: () => void;
@@ -38,6 +40,8 @@ function DashboardExtraContent({
   onCycleSettingState,
   onRemoveLibraryAsset,
   onRemoveStreamEvent,
+  onAddLibraryAsset,
+  onAddStreamEvent,
   onResetSettings,
   onResetLibrary,
   onResetStream,
@@ -68,6 +72,7 @@ function DashboardExtraContent({
       <StreamEventTimeline
         items={streamItems}
         onRemoveEvent={onRemoveStreamEvent}
+        onAddEvent={onAddStreamEvent}
         onResetEvents={onResetStream}
       />
     ),
@@ -75,6 +80,7 @@ function DashboardExtraContent({
       <LibraryAssetList
         items={libraryItems}
         onRemoveAsset={onRemoveLibraryAsset}
+        onAddAsset={onAddLibraryAsset}
         onResetAssets={onResetLibrary}
       />
     ),

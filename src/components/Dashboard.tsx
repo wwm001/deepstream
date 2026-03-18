@@ -21,6 +21,9 @@ type DashboardProps = {
   onSelectSection: (section: NavigationSection) => void;
 };
 
+type NewLibraryAssetInput = Omit<LibraryAsset, "id">;
+type NewStreamEventInput = Omit<StreamEvent, "id">;
+
 const nextSettingStateMap: Record<
   SettingCheck["state"],
   SettingCheck["state"]
@@ -29,6 +32,12 @@ const nextSettingStateMap: Record<
   watch: "next",
   next: "ok",
 };
+
+function createItemId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+}
 
 function Dashboard({
   currentSection,
@@ -66,6 +75,26 @@ function Dashboard({
     setStreamItems((currentItems) =>
       currentItems.filter((item) => item.id !== eventId)
     );
+  };
+
+  const handleAddLibraryAsset = (asset: NewLibraryAssetInput) => {
+    setLibraryItems((currentItems) => [
+      {
+        id: createItemId("library"),
+        ...asset,
+      },
+      ...currentItems,
+    ]);
+  };
+
+  const handleAddStreamEvent = (event: NewStreamEventInput) => {
+    setStreamItems((currentItems) => [
+      {
+        id: createItemId("stream"),
+        ...event,
+      },
+      ...currentItems,
+    ]);
   };
 
   const handleResetSettings = () => {
@@ -114,6 +143,8 @@ function Dashboard({
         onCycleSettingState={handleCycleSettingState}
         onRemoveLibraryAsset={handleRemoveLibraryAsset}
         onRemoveStreamEvent={handleRemoveStreamEvent}
+        onAddLibraryAsset={handleAddLibraryAsset}
+        onAddStreamEvent={handleAddStreamEvent}
         onResetSettings={handleResetSettings}
         onResetLibrary={handleResetLibrary}
         onResetStream={handleResetStream}
