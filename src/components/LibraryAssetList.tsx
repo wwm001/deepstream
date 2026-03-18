@@ -1,12 +1,16 @@
-import { useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import type { LibraryAsset } from "../dashboardData/types";
 import DashboardPanel from "./DashboardPanel";
 import DashboardTile from "./DashboardTile";
 import DashboardBadge from "./DashboardBadge";
 import DashboardActionButton from "./DashboardActionButton";
 
+type LibraryAssetItem = LibraryAsset & {
+  id?: string;
+};
+
 type LibraryAssetListProps = {
-  items: LibraryAsset[];
+  items: LibraryAssetItem[];
   onRemoveAsset?: (assetId: string) => void;
   onAddAsset?: (asset: Omit<LibraryAsset, "id">) => void;
   onResetAssets?: () => void;
@@ -38,110 +42,186 @@ function LibraryAssetList({
 }: LibraryAssetListProps) {
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
-  const [state, setState] = useState<LibraryAsset["state"]>("next");
   const [note, setNote] = useState("");
+  const [state, setState] = useState<LibraryAsset["state"]>("active");
 
-  const handleSubmit = () => {
-    const trimmedName = name.trim();
-    const trimmedRole = role.trim();
-    const trimmedNote = note.trim();
+  const trimmedName = name.trim();
+  const trimmedRole = role.trim();
+  const trimmedNote = note.trim();
 
-    if (!onAddAsset || !trimmedName || !trimmedRole) return;
+  const canSubmit = useMemo(() => {
+    return (
+      trimmedName.length > 0 &&
+      trimmedRole.length > 0 &&
+      trimmedNote.length > 0 &&
+      typeof onAddAsset === "function"
+    );
+  }, [trimmedName, trimmedRole, trimmedNote, onAddAsset]);
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!canSubmit || !onAddAsset) {
+      return;
+    }
 
     onAddAsset({
       name: trimmedName,
       role: trimmedRole,
+      note: trimmedNote,
       state,
-      note:
-        trimmedNote || "追加されたライブラリアセットです。",
     });
 
     setName("");
     setRole("");
-    setState("next");
     setNote("");
+    setState("active");
   };
 
   return (
-    <DashboardPanel
-      title="Component Assets"
-      right={
-        onResetAssets ? (
-          <DashboardActionButton
-            label="reset"
-            onClick={onResetAssets}
-          />
-        ) : undefined
-      }
-    >
-      {onAddAsset && (
+    <DashboardPanel title="Component Assets">
+      {(onAddAsset || onResetAssets) && (
         <div
           style={{
             display: "grid",
-            gap: "10px",
+            gap: "12px",
             marginBottom: "16px",
-            padding: "14px 16px",
-            borderRadius: "10px",
-            background: "#f9fafb",
-            border: "1px solid #f3f4f6",
           }}
         >
-          <input
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="asset name"
-            style={{
-              padding: "10px 12px",
-              borderRadius: "8px",
-              border: "1px solid #d1d5db",
-              fontSize: "14px",
-            }}
-          />
-          <input
-            value={role}
-            onChange={(event) => setRole(event.target.value)}
-            placeholder="role"
-            style={{
-              padding: "10px 12px",
-              borderRadius: "8px",
-              border: "1px solid #d1d5db",
-              fontSize: "14px",
-            }}
-          />
-          <select
-            value={state}
-            onChange={(event) =>
-              setState(event.target.value as LibraryAsset["state"])
-            }
-            style={{
-              padding: "10px 12px",
-              borderRadius: "8px",
-              border: "1px solid #d1d5db",
-              fontSize: "14px",
-              background: "#ffffff",
-            }}
-          >
-            <option value="stable">stable</option>
-            <option value="active">active</option>
-            <option value="next">next</option>
-          </select>
-          <input
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder="note (optional)"
-            style={{
-              padding: "10px 12px",
-              borderRadius: "8px",
-              border: "1px solid #d1d5db",
-              fontSize: "14px",
-            }}
-          />
-          <div>
-            <DashboardActionButton
-              label="add asset"
-              onClick={handleSubmit}
-            />
-          </div>
+          {onAddAsset && (
+            <form
+              onSubmit={handleSubmit}
+              style={{
+                display: "grid",
+                gap: "10px",
+                padding: "14px",
+                border: "1px solid #e5e7eb",
+                borderRadius: "12px",
+                background: "#f9fafb",
+              }}
+            >
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                  gap: "10px",
+                }}
+              >
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="name"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "10px",
+                    border: "1px solid #d1d5db",
+                    background: "#ffffff",
+                    color: "#111827",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                  }}
+                />
+
+                <input
+                  type="text"
+                  value={role}
+                  onChange={(event) => setRole(event.target.value)}
+                  placeholder="role"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "10px",
+                    border: "1px solid #d1d5db",
+                    background: "#ffffff",
+                    color: "#111827",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                  }}
+                />
+
+                <select
+                  value={state}
+                  onChange={(event) =>
+                    setState(event.target.value as LibraryAsset["state"])
+                  }
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "10px",
+                    border: "1px solid #d1d5db",
+                    background: "#ffffff",
+                    color: "#111827",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                  }}
+                >
+                  <option value="stable">stable</option>
+                  <option value="active">active</option>
+                  <option value="next">next</option>
+                </select>
+              </div>
+
+              <textarea
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                placeholder="note"
+                rows={3}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: "10px",
+                  border: "1px solid #d1d5db",
+                  background: "#ffffff",
+                  color: "#111827",
+                  fontSize: "14px",
+                  boxSizing: "border-box",
+                  resize: "vertical",
+                  fontFamily: "inherit",
+                }}
+              />
+
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "12px",
+                    color: canSubmit ? "#047857" : "#6b7280",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {canSubmit
+                    ? "Enter または add asset で追加できます"
+                    : "name / role / note を入れると追加できます"}
+                </span>
+
+                <DashboardActionButton
+                  label="add asset"
+                  type="submit"
+                  disabled={!canSubmit}
+                />
+              </div>
+            </form>
+          )}
+
+          {onResetAssets && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+              }}
+            >
+              <DashboardActionButton label="reset" onClick={onResetAssets} />
+            </div>
+          )}
         </div>
       )}
 
@@ -157,7 +237,7 @@ function LibraryAssetList({
 
           return (
             <DashboardTile
-              key={item.id}
+              key={item.id ?? item.name}
               title={item.name}
               right={
                 <div
@@ -174,10 +254,10 @@ function LibraryAssetList({
                     background={stateStyle.background}
                   />
 
-                  {onRemoveAsset && (
+                  {onRemoveAsset && item.id && (
                     <DashboardActionButton
                       label="remove"
-                      onClick={() => onRemoveAsset(item.id)}
+                      onClick={() => onRemoveAsset(item.id!)}
                     />
                   )}
                 </div>
