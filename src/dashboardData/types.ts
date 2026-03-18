@@ -22,6 +22,7 @@ export type SettingCheck = {
 };
 
 export type LibraryAsset = {
+  id: string;
   name: string;
   role: string;
   state: "stable" | "active" | "next";
@@ -29,6 +30,7 @@ export type LibraryAsset = {
 };
 
 export type StreamEvent = {
+  id: string;
   title: string;
   detail: string;
   phase: "done" | "current" | "next";
