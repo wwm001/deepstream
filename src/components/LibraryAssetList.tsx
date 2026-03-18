@@ -105,6 +105,27 @@ function LibraryAssetList({
     );
   }, [trimmedName, trimmedRole, trimmedNote, onAddAsset]);
 
+  const isDirty = useMemo(() => {
+    return (
+      name.length > 0 ||
+      role.length > 0 ||
+      note.length > 0 ||
+      state !== "active" ||
+      Object.keys(errors).length > 0 ||
+      submitMessage.length > 0
+    );
+  }, [name, role, note, state, errors, submitMessage]);
+
+  const clearForm = (withMessage = false) => {
+    setName("");
+    setRole("");
+    setNote("");
+    setState("active");
+    setErrors({});
+    setSubmitMessage(withMessage ? "入力をクリアしました。" : "");
+    nameInputRef.current?.focus();
+  };
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -268,9 +289,10 @@ function LibraryAssetList({
 
                 <select
                   value={state}
-                  onChange={(event) =>
-                    setState(event.target.value as LibraryAsset["state"])
-                  }
+                  onChange={(event) => {
+                    setState(event.target.value as LibraryAsset["state"]);
+                    setSubmitMessage("");
+                  }}
                   style={{
                     width: "100%",
                     padding: "10px 12px",
@@ -348,15 +370,29 @@ function LibraryAssetList({
                   }}
                 >
                   {canSubmit
-                    ? "Enter または add asset。textarea では Ctrl/Cmd+Enter で送信できます"
+                    ? "add asset できます。textarea では Ctrl/Cmd+Enter で送信できます"
                     : "name / role / note を入れると追加できます"}
                 </span>
 
-                <DashboardActionButton
-                  label="add asset"
-                  type="submit"
-                  disabled={!canSubmit}
-                />
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <DashboardActionButton
+                    label="clear"
+                    onClick={() => clearForm(true)}
+                    disabled={!isDirty}
+                  />
+                  <DashboardActionButton
+                    label="add asset"
+                    type="submit"
+                    disabled={!canSubmit}
+                  />
+                </div>
               </div>
 
               {submitMessage && (

@@ -95,6 +95,25 @@ function StreamEventTimeline({
     );
   }, [trimmedTitle, trimmedDetail, onAddEvent]);
 
+  const isDirty = useMemo(() => {
+    return (
+      title.length > 0 ||
+      detail.length > 0 ||
+      phase !== "current" ||
+      Object.keys(errors).length > 0 ||
+      submitMessage.length > 0
+    );
+  }, [title, detail, phase, errors, submitMessage]);
+
+  const clearForm = (withMessage = false) => {
+    setTitle("");
+    setDetail("");
+    setPhase("current");
+    setErrors({});
+    setSubmitMessage(withMessage ? "入力をクリアしました。" : "");
+    titleInputRef.current?.focus();
+  };
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -213,9 +232,10 @@ function StreamEventTimeline({
 
                 <select
                   value={phase}
-                  onChange={(event) =>
-                    setPhase(event.target.value as StreamEvent["phase"])
-                  }
+                  onChange={(event) => {
+                    setPhase(event.target.value as StreamEvent["phase"]);
+                    setSubmitMessage("");
+                  }}
                   style={{
                     width: "100%",
                     padding: "10px 12px",
@@ -293,15 +313,29 @@ function StreamEventTimeline({
                   }}
                 >
                   {canSubmit
-                    ? "Enter または add event。textarea では Ctrl/Cmd+Enter で送信できます"
+                    ? "add event できます。textarea では Ctrl/Cmd+Enter で送信できます"
                     : "title と detail を入れると追加できます"}
                 </span>
 
-                <DashboardActionButton
-                  label="add event"
-                  type="submit"
-                  disabled={!canSubmit}
-                />
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <DashboardActionButton
+                    label="clear"
+                    onClick={() => clearForm(true)}
+                    disabled={!isDirty}
+                  />
+                  <DashboardActionButton
+                    label="add event"
+                    type="submit"
+                    disabled={!canSubmit}
+                  />
+                </div>
               </div>
 
               {submitMessage && (
