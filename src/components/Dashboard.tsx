@@ -10,8 +10,6 @@ import { settingsChecks as initialSettingsChecks } from "../dashboardData/settin
 import { libraryAssets as initialLibraryAssets } from "../dashboardData/libraryData";
 import { streamEvents as initialStreamEvents } from "../dashboardData/streamData";
 import type {
-  HomeSectionSnapshot,
-  HomeSignal,
   LibraryAsset,
   SettingCheck,
   StreamEvent,
@@ -584,7 +582,6 @@ function Dashboard({
       <DashboardExtraContent
         currentSection={currentSection}
         onSelectSection={onSelectSection}
-        settingsItems={settingsItems}
         filteredSettingsChecks={filteredSettingsChecks}
         settingsFilter={settingsFilter}
         showSettingsNotes={showSettingsNotes}
@@ -595,7 +592,6 @@ function Dashboard({
         onToggleSettingsNotes={handleToggleSettingsNotes}
         onCycleSettingState={handleCycleSettingState}
         onResetSettings={handleResetSettings}
-        libraryItems={libraryItems}
         filteredLibraryAssets={filteredLibraryAssets}
         libraryFilter={libraryFilter}
         librarySort={librarySort}
@@ -610,7 +606,6 @@ function Dashboard({
         onAddLibraryAsset={handleAddLibraryAsset}
         onRemoveLibraryAsset={handleRemoveLibraryAsset}
         onResetLibrary={handleResetLibrary}
-        streamItems={streamItems}
         filteredStreamEvents={filteredStreamEvents}
         streamFilter={streamFilter}
         streamSort={streamSort}

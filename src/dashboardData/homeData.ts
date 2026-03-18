@@ -1,11 +1,49 @@
 import type {
   DashboardSectionData,
-  HomeSignal,
   HomeSectionSnapshot,
+  HomeSignal,
 } from "./types";
 import { streamSectionData } from "./streamData";
 import { librarySectionData } from "./libraryData";
 import { settingsSectionData } from "./settingsData";
+import type { NavigationSection } from "../navigationItems";
+
+type CreateHomeSignalsInput = {
+  currentSection: NavigationSection;
+
+  filteredStreamEventsCount: number;
+  streamFilter: "all" | "done" | "current" | "next";
+  streamSort: "timeline" | "newest" | "planned";
+  streamEventsCount: number;
+  streamPhaseCounts: {
+    doneCount: number;
+    currentCount: number;
+    nextCount: number;
+  };
+  userCreatedEventCount: number;
+
+  filteredLibraryAssetsCount: number;
+  libraryFilter: "all" | "stable" | "active" | "next";
+  librarySort: "name" | "state";
+  librarySearchTerm: string;
+  libraryItemsCount: number;
+  libraryStateCounts: {
+    stableCount: number;
+    activeCount: number;
+    nextCount: number;
+  };
+  userCreatedAssetCount: number;
+
+  filteredSettingsCount: number;
+  settingsFilter: "all" | "ok" | "watch" | "next";
+  showSettingsNotes: boolean;
+  settingsItemsCount: number;
+  settingsStateCounts: {
+    okCount: number;
+    watchCount: number;
+    nextCount: number;
+  };
+};
 
 export const homeSectionData: DashboardSectionData = {
   description: "DeepStream 全体の現在地と重要ポイントを表示します。",
@@ -50,41 +88,66 @@ export const homeSectionData: DashboardSectionData = {
   ],
 };
 
-type CreateHomeSignalsArgs = {
-  streamEventCount: number;
-  libraryAssetCount: number;
-  watchSettingCount: number;
-};
-
 export function createHomeSignals({
-  streamEventCount,
-  libraryAssetCount,
-  watchSettingCount,
-}: CreateHomeSignalsArgs): HomeSignal[] {
+  currentSection,
+  filteredStreamEventsCount,
+  streamFilter,
+  streamSort,
+  streamEventsCount,
+  streamPhaseCounts,
+  userCreatedEventCount,
+  filteredLibraryAssetsCount,
+  libraryFilter,
+  librarySort,
+  librarySearchTerm,
+  libraryItemsCount,
+  libraryStateCounts,
+  userCreatedAssetCount,
+  filteredSettingsCount,
+  settingsFilter,
+  showSettingsNotes,
+  settingsItemsCount,
+  settingsStateCounts,
+}: CreateHomeSignalsInput): HomeSignal[] {
   return [
     {
-      label: "Active Section Count",
-      value: "4",
-      note: "ホーム / ストリーム / ライブラリ / 設定の4系統が切替可能です。",
+      label: "Active Section",
+      value: currentSection,
+      note: `現在表示中のセクションは「${currentSection}」です。リロード後もここへ戻ります。`,
       tone: "primary",
     },
     {
-      label: "Stream Events",
-      value: String(streamEventCount),
-      note: "ストリーム画面のイベント件数です。remove で減少します。",
+      label: "Stream View",
+      value: String(filteredStreamEventsCount),
+      note: `filter ${streamFilter} / sort ${streamSort}。全体は done ${streamPhaseCounts.doneCount} / current ${streamPhaseCounts.currentCount} / next ${streamPhaseCounts.nextCount} / total ${streamEventsCount}。`,
       tone: "success",
     },
     {
-      label: "Library Assets",
-      value: String(libraryAssetCount),
-      note: "ライブラリ画面の資産件数です。remove で減少します。",
+      label: "Library View",
+      value: String(filteredLibraryAssetsCount),
+      note:
+        librarySearchTerm.trim().length > 0
+          ? `検索語「${librarySearchTerm}」・filter ${libraryFilter}・sort ${librarySort} の結果件数です。全体は stable ${libraryStateCounts.stableCount} / active ${libraryStateCounts.activeCount} / next ${libraryStateCounts.nextCount} / total ${libraryItemsCount}。`
+          : `filter ${libraryFilter} / sort ${librarySort} の表示件数です。全体は stable ${libraryStateCounts.stableCount} / active ${libraryStateCounts.activeCount} / next ${libraryStateCounts.nextCount} / total ${libraryItemsCount}。`,
       tone: "warning",
     },
     {
-      label: "Watch Settings",
-      value: String(watchSettingCount),
-      note: "設定画面で state を循環させるとこの数も連動します。",
+      label: "Settings View",
+      value: String(filteredSettingsCount),
+      note: `filter ${settingsFilter} / notes ${showSettingsNotes ? "on" : "off"}。全体は ok ${settingsStateCounts.okCount} / watch ${settingsStateCounts.watchCount} / next ${settingsStateCounts.nextCount} / total ${settingsItemsCount}。`,
       tone: "neutral",
+    },
+    {
+      label: "User Events",
+      value: String(userCreatedEventCount),
+      note: `追加済みのユーザーイベント数です。全イベント総数は ${streamEventsCount} 件です。`,
+      tone: "success",
+    },
+    {
+      label: "User Assets",
+      value: String(userCreatedAssetCount),
+      note: `追加済みのユーザーアセット数です。全アセット総数は ${libraryItemsCount} 件です。`,
+      tone: "warning",
     },
   ];
 }
@@ -96,28 +159,28 @@ export function createHomeSectionSnapshots(): HomeSectionSnapshot[] {
       status: homeSectionData.statusLabel,
       focus: homeSectionData.focusLabel,
       cardCount: homeSectionData.cards.length,
-      note: "DeepStream 全体の現在地と主要信号を俯瞰するトップ画面です。",
+      note: "全体俯瞰と主要信号の司令室です。",
     },
     {
       section: "ストリーム",
       status: streamSectionData.statusLabel,
       focus: streamSectionData.focusLabel,
       cardCount: streamSectionData.cards.length,
-      note: "更新履歴と進行フローを追跡する時系列寄りの画面です。",
+      note: "進行イベントの流れと追加操作を扱う時系列画面です。",
     },
     {
       section: "ライブラリ",
       status: librarySectionData.statusLabel,
       focus: librarySectionData.focusLabel,
       cardCount: librarySectionData.cards.length,
-      note: "再利用部品や設計資産を棚卸しする整理用の画面です。",
+      note: "再利用資産の検索・整理・追加を行う棚卸し画面です。",
     },
     {
       section: "設定",
       status: settingsSectionData.statusLabel,
       focus: settingsSectionData.focusLabel,
       cardCount: settingsSectionData.cards.length,
-      note: "開発環境や運用状態を確認する監視用の画面です。",
+      note: "環境状態の監視と状態切替を扱う監視画面です。",
     },
   ];
 }
