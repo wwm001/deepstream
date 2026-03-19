@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import StreamCard from "./StreamCard";
 import StatusPill from "./StatusPill";
 import SectionHeader from "./SectionHeader";
@@ -15,10 +15,7 @@ import type {
   StreamEvent,
 } from "../dashboardData/types";
 import type { NavigationSection } from "../navigationItems";
-import { STORAGE_KEYS } from "../utils/storageKeys";
-import { writeStorageJSON } from "../utils/safeLocalStorage";
 import {
-  DASHBOARD_STORAGE_NAMESPACE,
   type LibraryFilter,
   type LibrarySort,
   type PersistedLibraryState,
@@ -33,6 +30,7 @@ import {
 } from "../utils/dashboardState";
 import useDashboardDerivedState from "../hooks/useDashboardDerivedState";
 import useDashboardActions from "../hooks/useDashboardActions";
+import useDashboardPersistence from "../hooks/useDashboardPersistence";
 
 type DashboardProps = {
   currentSection: NavigationSection;
@@ -88,42 +86,18 @@ function Dashboard({
 
   const section = dashboardSections[currentSection];
 
-  useEffect(() => {
-    writeStorageJSON(
-      STORAGE_KEYS.settingsState,
-      {
-        settingsItems,
-        settingsFilter,
-        showSettingsNotes,
-      },
-      DASHBOARD_STORAGE_NAMESPACE
-    );
-  }, [settingsItems, settingsFilter, showSettingsNotes]);
-
-  useEffect(() => {
-    writeStorageJSON(
-      STORAGE_KEYS.libraryState,
-      {
-        libraryItems,
-        libraryFilter,
-        librarySort,
-        librarySearchTerm,
-      },
-      DASHBOARD_STORAGE_NAMESPACE
-    );
-  }, [libraryItems, libraryFilter, librarySort, librarySearchTerm]);
-
-  useEffect(() => {
-    writeStorageJSON(
-      STORAGE_KEYS.streamState,
-      {
-        streamItems,
-        streamFilter,
-        streamSort,
-      },
-      DASHBOARD_STORAGE_NAMESPACE
-    );
-  }, [streamItems, streamFilter, streamSort]);
+  useDashboardPersistence({
+    settingsItems,
+    settingsFilter,
+    showSettingsNotes,
+    libraryItems,
+    libraryFilter,
+    librarySort,
+    librarySearchTerm,
+    streamItems,
+    streamFilter,
+    streamSort,
+  });
 
   const {
     filteredSettingsChecks,
