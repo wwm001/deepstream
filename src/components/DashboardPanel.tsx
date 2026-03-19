@@ -2,49 +2,62 @@ import type { ReactNode } from "react";
 
 type DashboardPanelProps = {
   title: string;
-  right?: ReactNode;
   children: ReactNode;
 };
 
-function DashboardPanel({ title, right, children }: DashboardPanelProps) {
+function DashboardPanel({ title, children }: DashboardPanelProps) {
   return (
     <section
       style={{
-        marginTop: "20px",
-        padding: "18px",
-        borderRadius: "12px",
-        background: "#ffffff",
-        border: "1px solid #e5e7eb",
-        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+        display: "grid",
+        gap: "14px",
       }}
     >
       <div
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "12px",
-          flexWrap: "wrap",
-          marginBottom: "14px",
+          padding: "16px 18px",
+          borderRadius: "16px",
+          border: "1px solid #dbe4f0",
+          background:
+            "linear-gradient(135deg, #ffffff 0%, #f8fafc 48%, #eef6ff 100%)",
+          boxShadow: "0 10px 22px rgba(15, 23, 42, 0.04)",
         }}
       >
         <p
           style={{
-            margin: 0,
-            fontSize: "12px",
+            margin: "0 0 8px 0",
+            fontSize: "11px",
             fontWeight: 700,
             letterSpacing: "0.08em",
             textTransform: "uppercase",
-            color: "#6b7280",
+            color: "#475569",
+          }}
+        >
+          Panel Header
+        </p>
+
+        <h2
+          style={{
+            margin: 0,
+            fontSize: "22px",
+            lineHeight: 1.2,
+            fontWeight: 800,
+            letterSpacing: "-0.01em",
+            color: "#0f172a",
           }}
         >
           {title}
-        </p>
-
-        {right}
+        </h2>
       </div>
 
-      {children}
+      <div
+        style={{
+          display: "grid",
+          gap: "14px",
+        }}
+      >
+        {children}
+      </div>
     </section>
   );
 }

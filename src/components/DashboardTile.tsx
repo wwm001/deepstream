@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 type DashboardTileProps = {
   title?: string;
@@ -7,74 +7,38 @@ type DashboardTileProps = {
   background?: string;
   borderColor?: string;
   titleColor?: string;
-  onClick?: () => void;
 };
 
 function DashboardTile({
   title,
   right,
   children,
-  background = "#f9fafb",
-  borderColor = "#f3f4f6",
-  titleColor = "#6b7280",
-  onClick,
+  background = "#f8fafc",
+  borderColor = "#e2e8f0",
+  titleColor = "#64748b",
 }: DashboardTileProps) {
-  const [isHovered, setIsHovered] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
-
-  const isInteractive = Boolean(onClick);
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (!onClick) return;
-
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onClick();
-    }
-  };
-
-  const getTransform = () => {
-    if (!isHovered) return "translateY(0)";
-    return isInteractive ? "translateY(-1px)" : "translateY(-0.5px)";
-  };
-
-  const getBoxShadow = () => {
-    if (isInteractive && (isHovered || isFocused)) {
-      return "0 6px 14px rgba(0, 0, 0, 0.08)";
-    }
-
-    if (!isInteractive && isHovered) {
-      return "0 3px 8px rgba(0, 0, 0, 0.05)";
-    }
-
-    return "none";
-  };
-
   return (
     <article
-      role={isInteractive ? "button" : undefined}
-      tabIndex={isInteractive ? 0 : undefined}
-      onClick={onClick}
-      onKeyDown={handleKeyDown}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      onFocus={() => setIsFocused(true)}
-      onBlur={() => setIsFocused(false)}
       style={{
-        padding: "14px 16px",
-        borderRadius: "10px",
+        position: "relative",
+        overflow: "hidden",
+        padding: "16px 16px 16px 18px",
+        borderRadius: "14px",
         background,
         border: `1px solid ${borderColor}`,
-        cursor: isInteractive ? "pointer" : "default",
-        transform: getTransform(),
-        boxShadow: getBoxShadow(),
-        outline:
-          isInteractive && isFocused ? "2px solid #93c5fd" : "none",
-        outlineOffset: isInteractive && isFocused ? "2px" : undefined,
-        transition:
-          "transform 140ms ease, box-shadow 140ms ease, outline 140ms ease",
+        boxShadow: "0 4px 10px rgba(15, 23, 42, 0.03)",
       }}
     >
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: "0 auto 0 0",
+          width: "5px",
+          background: borderColor,
+        }}
+      />
+
       {(title || right) && (
         <div
           style={{
@@ -106,7 +70,7 @@ function DashboardTile({
 
       <div
         style={{
-          marginTop: title || right ? "10px" : 0,
+          marginTop: title || right ? "12px" : 0,
         }}
       >
         {children}
