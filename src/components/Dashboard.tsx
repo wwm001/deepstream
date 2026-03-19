@@ -16,19 +16,11 @@ import type {
 } from "../dashboardData/types";
 import type { NavigationSection } from "../navigationItems";
 import { STORAGE_KEYS } from "../utils/storageKeys";
+import { writeStorageJSON } from "../utils/safeLocalStorage";
 import {
-  removeStorageItem,
-  writeStorageJSON,
-} from "../utils/safeLocalStorage";
-import {
-  cloneLibraryItems,
-  cloneSettingsItems,
-  cloneStreamItems,
-  createClientId,
   DASHBOARD_STORAGE_NAMESPACE,
   type LibraryFilter,
   type LibrarySort,
-  nextSettingStateMap,
   type PersistedLibraryState,
   type PersistedSettingsState,
   type PersistedStreamState,
@@ -40,6 +32,7 @@ import {
   type StreamSort,
 } from "../utils/dashboardState";
 import useDashboardDerivedState from "../hooks/useDashboardDerivedState";
+import useDashboardActions from "../hooks/useDashboardActions";
 
 type DashboardProps = {
   currentSection: NavigationSection;
@@ -153,94 +146,31 @@ function Dashboard({
     streamSort,
   });
 
-  const handleCycleSettingState = (label: string) => {
-    setSettingsItems((currentItems) =>
-      currentItems.map((item) =>
-        item.label === label
-          ? {
-              ...item,
-              state: nextSettingStateMap[item.state],
-            }
-          : item
-      )
-    );
-  };
-
-  const handleToggleSettingsNotes = () => {
-    setShowSettingsNotes((current) => !current);
-  };
-
-  const handleRemoveLibraryAsset = (assetId: string) => {
-    setLibraryItems((currentItems) =>
-      currentItems.filter((item) => item.id !== assetId)
-    );
-  };
-
-  const handleRemoveStreamEvent = (eventId: string) => {
-    setStreamItems((currentItems) =>
-      currentItems.filter((item) => item.id !== eventId)
-    );
-  };
-
-  const handleAddLibraryAsset = (asset: Omit<LibraryAsset, "id">) => {
-    const trimmedName = asset.name.trim();
-    const trimmedRole = asset.role.trim();
-    const trimmedNote = asset.note.trim();
-
-    if (!trimmedName || !trimmedRole || !trimmedNote) {
-      return;
-    }
-
-    const newAsset: LibraryAsset = {
-      id: createClientId("library-user-"),
-      name: trimmedName,
-      role: trimmedRole,
-      note: trimmedNote,
-      state: asset.state,
-    };
-
-    setLibraryItems((currentItems) => [...currentItems, newAsset]);
-  };
-
-  const handleAddStreamEvent = (event: Omit<StreamEvent, "id">) => {
-    const trimmedTitle = event.title.trim();
-    const trimmedDetail = event.detail.trim();
-
-    if (!trimmedTitle || !trimmedDetail) {
-      return;
-    }
-
-    const newEvent: StreamEvent = {
-      id: createClientId("stream-user-"),
-      title: trimmedTitle,
-      detail: trimmedDetail,
-      phase: event.phase,
-    };
-
-    setStreamItems((currentItems) => [...currentItems, newEvent]);
-  };
-
-  const handleResetSettings = () => {
-    removeStorageItem(STORAGE_KEYS.settingsState, DASHBOARD_STORAGE_NAMESPACE);
-    setSettingsItems(cloneSettingsItems(initialSettingsChecks));
-    setSettingsFilter("all");
-    setShowSettingsNotes(true);
-  };
-
-  const handleResetLibrary = () => {
-    removeStorageItem(STORAGE_KEYS.libraryState, DASHBOARD_STORAGE_NAMESPACE);
-    setLibraryItems(cloneLibraryItems(initialLibraryAssets));
-    setLibraryFilter("all");
-    setLibrarySort("name");
-    setLibrarySearchTerm("");
-  };
-
-  const handleResetStream = () => {
-    removeStorageItem(STORAGE_KEYS.streamState, DASHBOARD_STORAGE_NAMESPACE);
-    setStreamItems(cloneStreamItems(initialStreamEvents));
-    setStreamFilter("all");
-    setStreamSort("timeline");
-  };
+  const {
+    handleCycleSettingState,
+    handleToggleSettingsNotes,
+    handleRemoveLibraryAsset,
+    handleRemoveStreamEvent,
+    handleAddLibraryAsset,
+    handleAddStreamEvent,
+    handleResetSettings,
+    handleResetLibrary,
+    handleResetStream,
+  } = useDashboardActions({
+    initialSettingsChecks,
+    initialLibraryAssets,
+    initialStreamEvents,
+    setSettingsItems,
+    setSettingsFilter,
+    setShowSettingsNotes,
+    setLibraryItems,
+    setLibraryFilter,
+    setLibrarySort,
+    setLibrarySearchTerm,
+    setStreamItems,
+    setStreamFilter,
+    setStreamSort,
+  });
 
   return (
     <section>
