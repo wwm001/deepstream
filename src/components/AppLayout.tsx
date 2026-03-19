@@ -7,31 +7,64 @@ type AppLayoutProps = {
   footer: ReactNode;
 };
 
-function AppLayout({ header, sidebar, content, footer }: AppLayoutProps) {
+function AppLayout({
+  header,
+  sidebar,
+  content,
+  footer,
+}: AppLayoutProps) {
   return (
     <main
       style={{
         minHeight: "100vh",
-        padding: "40px 24px",
-        maxWidth: "1200px",
-        margin: "0 auto",
+        padding: "32px 20px 40px",
+        background:
+          "radial-gradient(circle at top, #eef6ff 0%, #f8fafc 38%, #f8fafc 100%)",
       }}
     >
-      {header}
-
       <div
         style={{
+          maxWidth: "1360px",
+          margin: "0 auto",
           display: "grid",
-          gridTemplateColumns: "240px 1fr",
           gap: "24px",
-          marginTop: "32px",
         }}
       >
-        {sidebar}
-        {content}
-      </div>
+        {header}
 
-      {footer}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(280px, 320px) minmax(0, 1fr)",
+            gap: "24px",
+            alignItems: "start",
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gap: "16px",
+              position: "sticky",
+              top: "24px",
+              alignSelf: "start",
+            }}
+          >
+            {sidebar}
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gap: "20px",
+              minWidth: 0,
+            }}
+          >
+            {content}
+          </div>
+        </div>
+
+        {footer}
+      </div>
     </main>
   );
 }
