@@ -160,6 +160,38 @@ function StreamEventTimeline({
     }
   };
 
+  const handleConfirmRemove = (item: StreamEventItem) => {
+    if (!onRemoveEvent || !item.id) {
+      return;
+    }
+
+    const accepted = window.confirm(
+      `「${item.title}」をタイムラインから削除しますか？`
+    );
+
+    if (!accepted) {
+      return;
+    }
+
+    onRemoveEvent(item.id);
+  };
+
+  const handleConfirmReset = () => {
+    if (!onResetEvents) {
+      return;
+    }
+
+    const accepted = window.confirm(
+      "ストリームの一覧と表示状態を初期状態へ戻します。続行しますか？"
+    );
+
+    if (!accepted) {
+      return;
+    }
+
+    onResetEvents();
+  };
+
   return (
     <DashboardPanel title="Stream Timeline">
       {(onAddEvent || onResetEvents) && (
@@ -167,7 +199,6 @@ function StreamEventTimeline({
           style={{
             display: "grid",
             gap: "12px",
-            marginBottom: "16px",
           }}
         >
           {onAddEvent && (
@@ -360,126 +391,165 @@ function StreamEventTimeline({
                 justifyContent: "flex-end",
               }}
             >
-              <DashboardActionButton label="reset" onClick={onResetEvents} />
+              <DashboardActionButton
+                label="reset stream"
+                onClick={handleConfirmReset}
+              />
             </div>
           )}
         </div>
       )}
 
-      <div
-        style={{
-          display: "grid",
-          gap: "12px",
-        }}
-      >
-        {items.map((item, index) => {
-          const phaseStyle = phaseStyles[item.phase];
+      {items.length === 0 ? (
+        <article
+          style={{
+            padding: "16px 18px",
+            borderRadius: "14px",
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 4px 10px rgba(15, 23, 42, 0.03)",
+          }}
+        >
+          <p
+            style={{
+              margin: "0 0 6px 0",
+              fontSize: "11px",
+              fontWeight: 700,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: "#64748b",
+            }}
+          >
+            Empty Result
+          </p>
+          <p
+            style={{
+              margin: 0,
+              fontSize: "14px",
+              lineHeight: 1.7,
+              color: "#334155",
+              fontWeight: 500,
+            }}
+          >
+            現在の filter 条件に一致するイベントはありません。
+          </p>
+        </article>
+      ) : (
+        <div
+          style={{
+            display: "grid",
+            gap: "12px",
+          }}
+        >
+          {items.map((item, index) => {
+            const phaseStyle = phaseStyles[item.phase];
 
-          return (
-            <article
-              key={item.id ?? `${item.title}-${index}`}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "28px 1fr",
-                gap: "12px",
-                alignItems: "start",
-              }}
-            >
-              <div
+            return (
+              <article
+                key={item.id ?? `${item.title}-${index}`}
                 style={{
                   display: "grid",
-                  justifyItems: "center",
-                  gap: "6px",
-                }}
-              >
-                <span
-                  style={{
-                    width: "12px",
-                    height: "12px",
-                    borderRadius: "999px",
-                    background: phaseStyle.color,
-                    marginTop: "6px",
-                  }}
-                />
-                {index !== items.length - 1 && (
-                  <span
-                    style={{
-                      width: "2px",
-                      height: "100%",
-                      minHeight: "52px",
-                      background: "#e5e7eb",
-                      display: "block",
-                    }}
-                  />
-                )}
-              </div>
-
-              <div
-                style={{
-                  padding: "14px 16px",
-                  borderRadius: "10px",
-                  background: phaseStyle.background,
-                  border: `1px solid ${phaseStyle.border}`,
+                  gridTemplateColumns: "28px 1fr",
+                  gap: "12px",
+                  alignItems: "start",
                 }}
               >
                 <div
                   style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    gap: "12px",
-                    flexWrap: "wrap",
+                    display: "grid",
+                    justifyItems: "center",
+                    gap: "6px",
                   }}
                 >
-                  <h3
+                  <span
                     style={{
-                      margin: 0,
-                      fontSize: "16px",
-                      color: "#111827",
+                      width: "12px",
+                      height: "12px",
+                      borderRadius: "999px",
+                      background: phaseStyle.color,
+                      marginTop: "6px",
                     }}
-                  >
-                    {item.title}
-                  </h3>
+                  />
+                  {index !== items.length - 1 && (
+                    <span
+                      style={{
+                        width: "2px",
+                        height: "100%",
+                        minHeight: "52px",
+                        background: "#e5e7eb",
+                        display: "block",
+                      }}
+                    />
+                  )}
+                </div>
 
+                <div
+                  style={{
+                    padding: "14px 16px",
+                    borderRadius: "10px",
+                    background: phaseStyle.background,
+                    border: `1px solid ${phaseStyle.border}`,
+                  }}
+                >
                   <div
                     style={{
                       display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: "12px",
                       flexWrap: "wrap",
                     }}
                   >
-                    <DashboardBadge
-                      label={item.phase}
-                      color={phaseStyle.color}
-                      background="#ffffff"
-                      borderColor={phaseStyle.border}
-                    />
+                    <h3
+                      style={{
+                        margin: 0,
+                        fontSize: "16px",
+                        color: "#111827",
+                      }}
+                    >
+                      {item.title}
+                    </h3>
 
-                    {onRemoveEvent && item.id && (
-                      <DashboardActionButton
-                        label="remove"
-                        onClick={() => onRemoveEvent(item.id!)}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <DashboardBadge
+                        label={item.phase}
+                        color={phaseStyle.color}
+                        background="#ffffff"
+                        borderColor={phaseStyle.border}
                       />
-                    )}
-                  </div>
-                </div>
 
-                <p
-                  style={{
-                    margin: "10px 0 0 0",
-                    color: "#374151",
-                    lineHeight: 1.7,
-                    fontSize: "14px",
-                  }}
-                >
-                  {item.detail}
-                </p>
-              </div>
-            </article>
-          );
-        })}
-      </div>
+                      {onRemoveEvent && item.id && (
+                        <DashboardActionButton
+                          label="remove"
+                          onClick={() => handleConfirmRemove(item)}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  <p
+                    style={{
+                      margin: "10px 0 0 0",
+                      color: "#374151",
+                      lineHeight: 1.7,
+                      fontSize: "14px",
+                    }}
+                  >
+                    {item.detail}
+                  </p>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      )}
     </DashboardPanel>
   );
 }

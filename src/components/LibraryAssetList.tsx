@@ -177,6 +177,38 @@ function LibraryAssetList({
     }
   };
 
+  const handleConfirmRemove = (asset: LibraryAssetItem) => {
+    if (!onRemoveAsset || !asset.id) {
+      return;
+    }
+
+    const accepted = window.confirm(
+      `「${asset.name}」をライブラリから削除しますか？`
+    );
+
+    if (!accepted) {
+      return;
+    }
+
+    onRemoveAsset(asset.id);
+  };
+
+  const handleConfirmReset = () => {
+    if (!onResetAssets) {
+      return;
+    }
+
+    const accepted = window.confirm(
+      "ライブラリの一覧と表示状態を初期状態へ戻します。続行しますか？"
+    );
+
+    if (!accepted) {
+      return;
+    }
+
+    onResetAssets();
+  };
+
   return (
     <DashboardPanel title="Component Assets">
       {(onAddAsset || onResetAssets) && (
@@ -184,7 +216,6 @@ function LibraryAssetList({
           style={{
             display: "grid",
             gap: "12px",
-            marginBottom: "16px",
           }}
         >
           {onAddAsset && (
@@ -417,75 +448,114 @@ function LibraryAssetList({
                 justifyContent: "flex-end",
               }}
             >
-              <DashboardActionButton label="reset" onClick={onResetAssets} />
+              <DashboardActionButton
+                label="reset library"
+                onClick={handleConfirmReset}
+              />
             </div>
           )}
         </div>
       )}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-          gap: "12px",
-        }}
-      >
-        {items.map((item) => {
-          const stateStyle = stateStyles[item.state];
+      {items.length === 0 ? (
+        <article
+          style={{
+            padding: "16px 18px",
+            borderRadius: "14px",
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 4px 10px rgba(15, 23, 42, 0.03)",
+          }}
+        >
+          <p
+            style={{
+              margin: "0 0 6px 0",
+              fontSize: "11px",
+              fontWeight: 700,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: "#64748b",
+            }}
+          >
+            Empty Result
+          </p>
+          <p
+            style={{
+              margin: 0,
+              fontSize: "14px",
+              lineHeight: 1.7,
+              color: "#334155",
+              fontWeight: 500,
+            }}
+          >
+            現在の filter / search 条件に一致するアセットはありません。
+          </p>
+        </article>
+      ) : (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gap: "12px",
+          }}
+        >
+          {items.map((item) => {
+            const stateStyle = stateStyles[item.state];
 
-          return (
-            <DashboardTile
-              key={item.id ?? item.name}
-              title={item.name}
-              right={
-                <div
+            return (
+              <DashboardTile
+                key={item.id ?? item.name}
+                title={item.name}
+                right={
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <DashboardBadge
+                      label={item.state}
+                      color={stateStyle.color}
+                      background={stateStyle.background}
+                    />
+
+                    {onRemoveAsset && item.id && (
+                      <DashboardActionButton
+                        label="remove"
+                        onClick={() => handleConfirmRemove(item)}
+                      />
+                    )}
+                  </div>
+                }
+              >
+                <p
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    flexWrap: "wrap",
+                    margin: 0,
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    color: "#111827",
                   }}
                 >
-                  <DashboardBadge
-                    label={item.state}
-                    color={stateStyle.color}
-                    background={stateStyle.background}
-                  />
+                  {item.role}
+                </p>
 
-                  {onRemoveAsset && item.id && (
-                    <DashboardActionButton
-                      label="remove"
-                      onClick={() => onRemoveAsset(item.id!)}
-                    />
-                  )}
-                </div>
-              }
-            >
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  color: "#111827",
-                }}
-              >
-                {item.role}
-              </p>
-
-              <p
-                style={{
-                  margin: "8px 0 0 0",
-                  color: "#4b5563",
-                  lineHeight: 1.6,
-                  fontSize: "14px",
-                }}
-              >
-                {item.note}
-              </p>
-            </DashboardTile>
-          );
-        })}
-      </div>
+                <p
+                  style={{
+                    margin: "8px 0 0 0",
+                    color: "#4b5563",
+                    lineHeight: 1.6,
+                    fontSize: "14px",
+                  }}
+                >
+                  {item.note}
+                </p>
+              </DashboardTile>
+            );
+          })}
+        </div>
+      )}
     </DashboardPanel>
   );
 }
