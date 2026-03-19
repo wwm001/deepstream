@@ -9,8 +9,10 @@ import {
   createHomeSignals,
 } from "../dashboardData/homeData";
 import type { NavigationSection } from "../navigationItems";
+import type { DashboardSnapshot } from "../utils/dashboardSnapshot";
 import HomeOverviewPanel from "./HomeOverviewPanel";
 import HomeSectionSnapshotList from "./HomeSectionSnapshotList";
+import HomeCommandPanel from "./HomeCommandPanel";
 import SettingsControlPanel from "./SettingsControlPanel";
 import SettingsStatusList from "./SettingsStatusList";
 import LibraryControlPanel from "./LibraryControlPanel";
@@ -21,6 +23,10 @@ import StreamEventTimeline from "./StreamEventTimeline";
 type DashboardExtraContentProps = {
   currentSection: NavigationSection;
   onSelectSection: (section: NavigationSection) => void;
+
+  snapshot: DashboardSnapshot;
+  onImportSnapshot: (snapshot: DashboardSnapshot) => void;
+  onResetWorkspace: () => void;
 
   filteredSettingsChecks: SettingCheck[];
   settingsFilter: "all" | SettingCheck["state"];
@@ -77,6 +83,9 @@ type DashboardExtraContentProps = {
 function DashboardExtraContent({
   currentSection,
   onSelectSection,
+  snapshot,
+  onImportSnapshot,
+  onResetWorkspace,
   filteredSettingsChecks,
   settingsFilter,
   showSettingsNotes,
@@ -142,6 +151,11 @@ function DashboardExtraContent({
     ホーム: (
       <>
         <HomeOverviewPanel items={homeSignals} />
+        <HomeCommandPanel
+          snapshot={snapshot}
+          onImportSnapshot={onImportSnapshot}
+          onResetWorkspace={onResetWorkspace}
+        />
         <HomeSectionSnapshotList
           items={homeSectionSnapshots}
           onSelectSection={onSelectSection}

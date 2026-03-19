@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import StreamCard from "./StreamCard";
 import StatusPill from "./StatusPill";
 import SectionHeader from "./SectionHeader";
@@ -15,6 +15,7 @@ import type {
   StreamEvent,
 } from "../dashboardData/types";
 import type { NavigationSection } from "../navigationItems";
+import type { DashboardSnapshot } from "../utils/dashboardSnapshot";
 import {
   type LibraryFilter,
   type LibrarySort,
@@ -146,6 +147,67 @@ function Dashboard({
     setStreamSort,
   });
 
+  const snapshot = useMemo<DashboardSnapshot>(
+    () => ({
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      currentSection,
+      settings: {
+        items: settingsItems,
+        filter: settingsFilter,
+        showNotes: showSettingsNotes,
+      },
+      library: {
+        items: libraryItems,
+        filter: libraryFilter,
+        sort: librarySort,
+        searchTerm: librarySearchTerm,
+      },
+      stream: {
+        items: streamItems,
+        filter: streamFilter,
+        sort: streamSort,
+      },
+    }),
+    [
+      currentSection,
+      settingsItems,
+      settingsFilter,
+      showSettingsNotes,
+      libraryItems,
+      libraryFilter,
+      librarySort,
+      librarySearchTerm,
+      streamItems,
+      streamFilter,
+      streamSort,
+    ]
+  );
+
+  const handleImportSnapshot = (nextSnapshot: DashboardSnapshot) => {
+    setSettingsItems(nextSnapshot.settings.items);
+    setSettingsFilter(nextSnapshot.settings.filter);
+    setShowSettingsNotes(nextSnapshot.settings.showNotes);
+
+    setLibraryItems(nextSnapshot.library.items);
+    setLibraryFilter(nextSnapshot.library.filter);
+    setLibrarySort(nextSnapshot.library.sort);
+    setLibrarySearchTerm(nextSnapshot.library.searchTerm);
+
+    setStreamItems(nextSnapshot.stream.items);
+    setStreamFilter(nextSnapshot.stream.filter);
+    setStreamSort(nextSnapshot.stream.sort);
+
+    onSelectSection(nextSnapshot.currentSection);
+  };
+
+  const handleResetWorkspace = () => {
+    handleResetSettings();
+    handleResetLibrary();
+    handleResetStream();
+    onSelectSection("ホーム");
+  };
+
   return (
     <section>
       <SectionHeader
@@ -174,6 +236,9 @@ function Dashboard({
       <DashboardExtraContent
         currentSection={currentSection}
         onSelectSection={onSelectSection}
+        snapshot={snapshot}
+        onImportSnapshot={handleImportSnapshot}
+        onResetWorkspace={handleResetWorkspace}
         filteredSettingsChecks={filteredSettingsChecks}
         settingsFilter={settingsFilter}
         showSettingsNotes={showSettingsNotes}
