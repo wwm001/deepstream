@@ -79,6 +79,7 @@ function ReportsPanel({
                   cursor: "pointer",
                   display: "grid",
                   gap: "10px",
+                  minHeight: "132px",
                 }}
               >
                 <div
@@ -88,9 +89,17 @@ function ReportsPanel({
                     alignItems: "start",
                     gap: "10px",
                     flexWrap: "wrap",
+                    minHeight: "44px",
                   }}
                 >
-                  <div style={{ display: "grid", gap: "6px" }}>
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: "6px",
+                      minHeight: "44px",
+                      alignContent: "start",
+                    }}
+                  >
                     <strong
                       style={{
                         fontSize: "14px",
@@ -123,6 +132,7 @@ function ReportsPanel({
                     fontSize: "13px",
                     lineHeight: 1.7,
                     color: "#4b5563",
+                    minHeight: "44px",
                   }}
                 >
                   {item.summary}
@@ -148,14 +158,23 @@ function ReportsPanel({
                 alignItems: "start",
                 gap: "12px",
                 flexWrap: "wrap",
+                minHeight: "68px",
               }}
             >
-              <div style={{ display: "grid", gap: "6px" }}>
+              <div
+                style={{
+                  display: "grid",
+                  gap: "6px",
+                  minHeight: "68px",
+                  alignContent: "start",
+                }}
+              >
                 <h3
                   style={{
                     margin: 0,
                     fontSize: "18px",
                     color: "#111827",
+                    lineHeight: 1.35,
                   }}
                 >
                   {selectedReport.title}
@@ -186,6 +205,9 @@ function ReportsPanel({
                 fontSize: "13px",
                 lineHeight: 1.7,
                 color: "#4b5563",
+                minHeight: "72px",
+                display: "flex",
+                alignItems: "flex-start",
               }}
             >
               {selectedReport.summary}
