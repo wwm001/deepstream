@@ -271,6 +271,7 @@ function ReportsPanel({
           display: "grid",
           gridTemplateColumns: "minmax(280px, 360px) minmax(0, 1fr)",
           gap: "16px",
+          alignItems: "start",
         }}
       >
         <DashboardPanel title="Reports Queue">
@@ -298,7 +299,7 @@ function ReportsPanel({
                     cursor: "pointer",
                     display: "grid",
                     gap: "10px",
-                    minHeight: "132px",
+                    minHeight: "148px",
                   }}
                 >
                   <div
@@ -351,7 +352,11 @@ function ReportsPanel({
                       fontSize: "13px",
                       lineHeight: 1.7,
                       color: "#4b5563",
-                      minHeight: "44px",
+                      minHeight: "54px",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
                     }}
                   >
                     {item.summary}
@@ -368,14 +373,18 @@ function ReportsPanel({
               style={{
                 display: "grid",
                 gap: "14px",
+                gridTemplateRows: "88px 88px auto",
+                alignItems: "start",
               }}
             >
-              <div
+              <section
                 style={{
+                  minHeight: "88px",
+                  maxHeight: "88px",
                   display: "grid",
                   gap: "6px",
-                  minHeight: "68px",
                   alignContent: "start",
+                  overflow: "hidden",
                 }}
               >
                 <h3
@@ -384,22 +393,30 @@ function ReportsPanel({
                     fontSize: "18px",
                     color: "#111827",
                     lineHeight: 1.35,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
                   }}
                 >
                   {selectedReport.title}
                 </h3>
+
                 <div
                   style={{
                     fontSize: "12px",
                     color: "#6b7280",
                     lineHeight: 1.6,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
                   }}
                 >
                   {selectedReport.source} ・ {selectedReport.createdAt}
                 </div>
-              </div>
+              </section>
 
-              <div
+              <section
                 style={{
                   padding: "12px 14px",
                   borderRadius: "12px",
@@ -408,13 +425,24 @@ function ReportsPanel({
                   fontSize: "13px",
                   lineHeight: 1.7,
                   color: "#4b5563",
-                  minHeight: "72px",
+                  minHeight: "88px",
+                  maxHeight: "88px",
                   display: "flex",
                   alignItems: "flex-start",
+                  overflow: "hidden",
                 }}
               >
-                {selectedReport.summary}
-              </div>
+                <span
+                  style={{
+                    display: "-webkit-box",
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }}
+                >
+                  {selectedReport.summary}
+                </span>
+              </section>
 
               <article
                 style={{
