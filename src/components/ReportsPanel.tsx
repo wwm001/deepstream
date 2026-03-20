@@ -13,6 +13,11 @@ type ReportsPanelProps = {
 
 type ReportFilter = "all" | ReportStatus;
 
+type ReportSegment = {
+  kind: "title" | "summary" | "body";
+  text: string;
+};
+
 const statusStyles: Record<
   ReportStatus,
   { color: string; background: string; label: string }
@@ -37,8 +42,30 @@ const statusStyles: Record<
 const playbackRates = [0.8, 1.0, 1.2, 1.5, 2.0] as const;
 const reportFilters: ReportFilter[] = ["all", "new", "reading", "archived"];
 
-function buildSpeechText(report: ReportRecord) {
-  return [report.title, report.summary, report.body].join("\n\n");
+function splitBodyParagraphs(body: string) {
+  return body
+    .split(/\n\s*\n/g)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+}
+
+function buildReportSegments(report: ReportRecord): ReportSegment[] {
+  const bodyParagraphs = splitBodyParagraphs(report.body);
+
+  return [
+    {
+      kind: "title",
+      text: report.title,
+    },
+    {
+      kind: "summary",
+      text: report.summary,
+    },
+    ...bodyParagraphs.map((paragraph) => ({
+      kind: "body" as const,
+      text: paragraph,
+    })),
+  ];
 }
 
 function ReportsPanel({
@@ -52,11 +79,17 @@ function ReportsPanel({
   const [isReading, setIsReading] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [readingReportId, setReadingReportId] = useState<string | null>(null);
+  const [currentSegmentIndex, setCurrentSegmentIndex] = useState<number | null>(
+    null
+  );
 
   const [reportFilter, setReportFilter] = useState<ReportFilter>("all");
   const [searchTerm, setSearchTerm] = useState("");
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const segmentQueueRef = useRef<ReportSegment[]>([]);
+  const activeReportIdRef = useRef<string | null>(null);
+  const isStoppingRef = useRef(false);
 
   const speechSupported =
     typeof window !== "undefined" && "speechSynthesis" in window;
@@ -95,6 +128,22 @@ function ReportsPanel({
     );
   }, [filteredItems, selectedReportId]);
 
+  const selectedBodyParagraphs = useMemo(() => {
+    if (!selectedReport) {
+      return [];
+    }
+
+    return splitBodyParagraphs(selectedReport.body);
+  }, [selectedReport]);
+
+  const selectedSegments = useMemo(() => {
+    if (!selectedReport) {
+      return [];
+    }
+
+    return buildReportSegments(selectedReport);
+  }, [selectedReport]);
+
   const filterCounts = useMemo(
     () => ({
       all: items.length,
@@ -105,16 +154,91 @@ function ReportsPanel({
     [items]
   );
 
+  const finishReading = () => {
+    utteranceRef.current = null;
+    segmentQueueRef.current = [];
+    activeReportIdRef.current = null;
+    isStoppingRef.current = false;
+    setIsReading(false);
+    setIsPaused(false);
+    setReadingReportId(null);
+    setCurrentSegmentIndex(null);
+  };
+
   const stopReading = () => {
     if (!speechSupported) {
       return;
     }
 
+    isStoppingRef.current = true;
     window.speechSynthesis.cancel();
-    utteranceRef.current = null;
-    setIsReading(false);
-    setIsPaused(false);
-    setReadingReportId(null);
+    finishReading();
+  };
+
+  const speakSegmentAt = (segmentIndex: number) => {
+    if (!speechSupported) {
+      return;
+    }
+
+    const segment = segmentQueueRef.current[segmentIndex];
+
+    if (!segment) {
+      finishReading();
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(segment.text);
+    utterance.rate = playbackRate;
+    utterance.lang = "ja-JP";
+
+    utterance.onstart = () => {
+      setIsReading(true);
+      setIsPaused(false);
+      setReadingReportId(activeReportIdRef.current);
+      setCurrentSegmentIndex(segmentIndex);
+    };
+
+    utterance.onpause = () => {
+      setIsPaused(true);
+    };
+
+    utterance.onresume = () => {
+      setIsPaused(false);
+    };
+
+    utterance.onend = () => {
+      if (isStoppingRef.current) {
+        return;
+      }
+
+      const nextIndex = segmentIndex + 1;
+
+      if (nextIndex < segmentQueueRef.current.length) {
+        speakSegmentAt(nextIndex);
+        return;
+      }
+
+      finishReading();
+    };
+
+    utterance.onerror = () => {
+      finishReading();
+    };
+
+    utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const startReading = () => {
+    if (!speechSupported || !selectedReport) {
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    isStoppingRef.current = false;
+    activeReportIdRef.current = selectedReport.id;
+    segmentQueueRef.current = buildReportSegments(selectedReport);
+    speakSegmentAt(0);
   };
 
   const pauseReading = () => {
@@ -133,51 +257,6 @@ function ReportsPanel({
 
     window.speechSynthesis.resume();
     setIsPaused(false);
-  };
-
-  const startReading = () => {
-    if (!speechSupported || !selectedReport) {
-      return;
-    }
-
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(
-      buildSpeechText(selectedReport)
-    );
-    utterance.rate = playbackRate;
-    utterance.lang = "ja-JP";
-
-    utterance.onstart = () => {
-      setIsReading(true);
-      setIsPaused(false);
-      setReadingReportId(selectedReport.id);
-    };
-
-    utterance.onend = () => {
-      setIsReading(false);
-      setIsPaused(false);
-      setReadingReportId(null);
-      utteranceRef.current = null;
-    };
-
-    utterance.onerror = () => {
-      setIsReading(false);
-      setIsPaused(false);
-      setReadingReportId(null);
-      utteranceRef.current = null;
-    };
-
-    utterance.onpause = () => {
-      setIsPaused(true);
-    };
-
-    utterance.onresume = () => {
-      setIsPaused(false);
-    };
-
-    utteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
   };
 
   useEffect(() => {
@@ -213,6 +292,23 @@ function ReportsPanel({
         ? "#b45309"
         : "#047857"
       : "#64748b";
+
+  const isSelectedReportBeingRead =
+    Boolean(selectedReport) &&
+    isReading &&
+    selectedReport?.id === readingReportId;
+
+  const currentSegment = useMemo(() => {
+    if (
+      currentSegmentIndex == null ||
+      currentSegmentIndex < 0 ||
+      currentSegmentIndex >= selectedSegments.length
+    ) {
+      return null;
+    }
+
+    return selectedSegments[currentSegmentIndex] ?? null;
+  }, [currentSegmentIndex, selectedSegments]);
 
   return (
     <div
@@ -678,7 +774,6 @@ function ReportsPanel({
               style={{
                 display: "grid",
                 gap: "14px",
-                gridTemplateRows: "auto 88px 88px auto",
                 alignItems: "start",
               }}
             >
@@ -693,11 +788,11 @@ function ReportsPanel({
                   padding: "10px 12px",
                   borderRadius: "12px",
                   border:
-                    isReading && readingReportId === selectedReport.id
+                    isSelectedReportBeingRead
                       ? `1px solid ${isPaused ? "#fdba74" : "#86efac"}`
                       : "1px solid #e5e7eb",
                   background:
-                    isReading && readingReportId === selectedReport.id
+                    isSelectedReportBeingRead
                       ? isPaused
                         ? "#fff7ed"
                         : "#f0fdf4"
@@ -710,15 +805,14 @@ function ReportsPanel({
                     fontWeight: 700,
                     letterSpacing: "0.05em",
                     textTransform: "uppercase",
-                    color:
-                      isReading && readingReportId === selectedReport.id
-                        ? isPaused
-                          ? "#b45309"
-                          : "#047857"
-                        : "#64748b",
+                    color: isSelectedReportBeingRead
+                      ? isPaused
+                        ? "#b45309"
+                        : "#047857"
+                      : "#64748b",
                   }}
                 >
-                  {isReading && readingReportId === selectedReport.id
+                  {isSelectedReportBeingRead
                     ? isPaused
                       ? "Reader paused"
                       : "Reader speaking"
@@ -732,10 +826,12 @@ function ReportsPanel({
                     lineHeight: 1.5,
                   }}
                 >
-                  {isReading && readingReportId === selectedReport.id
+                  {isSelectedReportBeingRead
                     ? isPaused
                       ? "現在のレポートを一時停止しています。"
-                      : "現在のレポートを読み上げ中です。"
+                      : currentSegment
+                        ? `現在は ${currentSegment.kind} を読み上げています。`
+                        : "現在のレポートを読み上げ中です。"
                     : "選択中レポートを表示しています。"}
                 </span>
               </div>
@@ -748,6 +844,20 @@ function ReportsPanel({
                   gap: "6px",
                   alignContent: "start",
                   overflow: "hidden",
+                  padding: "10px 12px",
+                  borderRadius: "12px",
+                  border:
+                    isSelectedReportBeingRead && currentSegment?.kind === "title"
+                      ? `1px solid ${isPaused ? "#fdba74" : "#86efac"}`
+                      : "1px solid transparent",
+                  background:
+                    isSelectedReportBeingRead && currentSegment?.kind === "title"
+                      ? isPaused
+                        ? "#fff7ed"
+                        : "#f0fdf4"
+                      : "transparent",
+                  transition:
+                    "border-color 140ms ease, background 140ms ease",
                 }}
               >
                 <h3
@@ -783,8 +893,16 @@ function ReportsPanel({
                 style={{
                   padding: "12px 14px",
                   borderRadius: "12px",
-                  background: "#f9fafb",
-                  border: "1px solid #e5e7eb",
+                  background:
+                    isSelectedReportBeingRead && currentSegment?.kind === "summary"
+                      ? isPaused
+                        ? "#fff7ed"
+                        : "#f0fdf4"
+                      : "#f9fafb",
+                  border:
+                    isSelectedReportBeingRead && currentSegment?.kind === "summary"
+                      ? `1px solid ${isPaused ? "#fdba74" : "#86efac"}`
+                      : "1px solid #e5e7eb",
                   fontSize: "13px",
                   lineHeight: 1.7,
                   color: "#4b5563",
@@ -793,6 +911,8 @@ function ReportsPanel({
                   display: "flex",
                   alignItems: "flex-start",
                   overflow: "hidden",
+                  transition:
+                    "border-color 140ms ease, background 140ms ease",
                 }}
               >
                 <span
@@ -809,13 +929,45 @@ function ReportsPanel({
 
               <article
                 style={{
-                  whiteSpace: "pre-wrap",
-                  fontSize: "14px",
-                  lineHeight: 1.9,
-                  color: "#111827",
+                  display: "grid",
+                  gap: "12px",
                 }}
               >
-                {selectedReport.body}
+                {selectedBodyParagraphs.map((paragraph, index) => {
+                  const segmentIndex = index + 2;
+                  const isActiveParagraph =
+                    isSelectedReportBeingRead &&
+                    currentSegment?.kind === "body" &&
+                    currentSegmentIndex === segmentIndex;
+
+                  return (
+                    <section
+                      key={`${selectedReport.id}-paragraph-${index}`}
+                      style={{
+                        padding: "14px 16px",
+                        borderRadius: "12px",
+                        border: isActiveParagraph
+                          ? `1px solid ${isPaused ? "#fdba74" : "#86efac"}`
+                          : "1px solid #e5e7eb",
+                        background: isActiveParagraph
+                          ? isPaused
+                            ? "#fff7ed"
+                            : "#f0fdf4"
+                          : "#ffffff",
+                        color: "#111827",
+                        fontSize: "14px",
+                        lineHeight: 1.9,
+                        boxShadow: isActiveParagraph
+                          ? "0 0 0 3px rgba(34, 197, 94, 0.10)"
+                          : "none",
+                        transition:
+                          "border-color 140ms ease, background 140ms ease, box-shadow 140ms ease",
+                      }}
+                    >
+                      {paragraph}
+                    </section>
+                  );
+                })}
               </article>
             </div>
           ) : (
