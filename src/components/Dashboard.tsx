@@ -66,7 +66,11 @@ function isValidActivityItem(value: unknown): value is HomeActivityItem {
     typeof value.timeLabel === "string" &&
     (value.tone === "neutral" ||
       value.tone === "success" ||
-      value.tone === "warning")
+      value.tone === "warning") &&
+    (value.category === "system" ||
+      value.category === "settings" ||
+      value.category === "library" ||
+      value.category === "stream")
   );
 }
 
@@ -78,6 +82,7 @@ function createInitialActivityItems(): HomeActivityItem[] {
       detail: "DeepStream の現在セッションを開始しました。",
       timeLabel: createTimeLabel(),
       tone: "neutral",
+      category: "system",
     },
   ];
 }
@@ -228,7 +233,8 @@ function Dashboard({
   const pushActivity = (
     title: string,
     detail: string,
-    tone: HomeActivityItem["tone"]
+    tone: HomeActivityItem["tone"],
+    category: HomeActivityItem["category"]
   ) => {
     setActivityItems((current) =>
       [
@@ -238,6 +244,7 @@ function Dashboard({
           detail,
           timeLabel: createTimeLabel(),
           tone,
+          category,
         },
         ...current,
       ].slice(0, 12)
@@ -289,7 +296,8 @@ function Dashboard({
     pushActivity(
       "Snapshot Exported",
       "現在のワークスペース状態を JSON として書き出しました。",
-      "neutral"
+      "neutral",
+      "system"
     );
   };
 
@@ -312,7 +320,8 @@ function Dashboard({
     pushActivity(
       "Snapshot Imported",
       `スナップショットを読み込み、「${nextSnapshot.currentSection}」を復元しました。`,
-      "success"
+      "success",
+      "system"
     );
   };
 
@@ -325,7 +334,8 @@ function Dashboard({
     pushActivity(
       "Workspace Reset",
       "ワークスペース全体を初期状態へ戻しました。",
-      "warning"
+      "warning",
+      "system"
     );
   };
 
@@ -336,7 +346,8 @@ function Dashboard({
     pushActivity(
       "Settings Filter Changed",
       `設定フィルタを「${filter}」へ切り替えました。`,
-      "neutral"
+      "neutral",
+      "settings"
     );
   };
 
@@ -346,7 +357,8 @@ function Dashboard({
     pushActivity(
       "Notes Visibility Changed",
       `設定ノート表示を ${nextValue ? "on" : "off"} に切り替えました。`,
-      "neutral"
+      "neutral",
+      "settings"
     );
   };
 
@@ -355,7 +367,8 @@ function Dashboard({
     pushActivity(
       "Setting Updated",
       `設定項目「${label}」の状態を切り替えました。`,
-      "neutral"
+      "neutral",
+      "settings"
     );
   };
 
@@ -364,7 +377,8 @@ function Dashboard({
     pushActivity(
       "Settings Reset",
       "設定チェックと表示状態を初期状態へ戻しました。",
-      "warning"
+      "warning",
+      "settings"
     );
   };
 
@@ -375,7 +389,8 @@ function Dashboard({
     pushActivity(
       "Library Filter Changed",
       `ライブラリフィルタを「${filter}」へ切り替えました。`,
-      "neutral"
+      "neutral",
+      "library"
     );
   };
 
@@ -384,7 +399,8 @@ function Dashboard({
     pushActivity(
       "Library Sort Changed",
       `ライブラリ並び順を「${sort}」へ切り替えました。`,
-      "neutral"
+      "neutral",
+      "library"
     );
   };
 
@@ -395,7 +411,8 @@ function Dashboard({
       searchTerm.trim().length > 0
         ? `ライブラリ検索語を「${searchTerm}」へ更新しました。`
         : "ライブラリ検索語をクリアしました。",
-      "neutral"
+      "neutral",
+      "library"
     );
   };
 
@@ -412,7 +429,8 @@ function Dashboard({
     pushActivity(
       "Library Asset Added",
       `ライブラリアセット「${trimmedName}」を追加しました。`,
-      "success"
+      "success",
+      "library"
     );
   };
 
@@ -448,7 +466,8 @@ function Dashboard({
       targetAsset
         ? `ライブラリアセット「${targetAsset.name}」を更新しました。`
         : "ライブラリアセットを更新しました。",
-      "success"
+      "success",
+      "library"
     );
   };
 
@@ -461,7 +480,8 @@ function Dashboard({
       targetAsset
         ? `ライブラリアセット「${targetAsset.name}」を削除しました。`
         : "ライブラリアセットを削除しました。",
-      "warning"
+      "warning",
+      "library"
     );
   };
 
@@ -470,7 +490,8 @@ function Dashboard({
     pushActivity(
       "Library Reset",
       "ライブラリの一覧と表示状態を初期状態へ戻しました。",
-      "warning"
+      "warning",
+      "library"
     );
   };
 
@@ -481,7 +502,8 @@ function Dashboard({
     pushActivity(
       "Stream Filter Changed",
       `ストリームフィルタを「${filter}」へ切り替えました。`,
-      "neutral"
+      "neutral",
+      "stream"
     );
   };
 
@@ -492,7 +514,8 @@ function Dashboard({
     pushActivity(
       "Stream Sort Changed",
       `ストリーム並び順を「${sort}」へ切り替えました。`,
-      "neutral"
+      "neutral",
+      "stream"
     );
   };
 
@@ -508,7 +531,8 @@ function Dashboard({
     pushActivity(
       "Stream Event Added",
       `ストリームイベント「${trimmedTitle}」を追加しました。`,
-      "success"
+      "success",
+      "stream"
     );
   };
 
@@ -542,7 +566,8 @@ function Dashboard({
       targetEvent
         ? `ストリームイベント「${targetEvent.title}」を更新しました。`
         : "ストリームイベントを更新しました。",
-      "success"
+      "success",
+      "stream"
     );
   };
 
@@ -555,7 +580,8 @@ function Dashboard({
       targetEvent
         ? `ストリームイベント「${targetEvent.title}」を削除しました。`
         : "ストリームイベントを削除しました。",
-      "warning"
+      "warning",
+      "stream"
     );
   };
 
@@ -564,7 +590,8 @@ function Dashboard({
     pushActivity(
       "Stream Reset",
       "ストリームの一覧と表示状態を初期状態へ戻しました。",
-      "warning"
+      "warning",
+      "stream"
     );
   };
 
