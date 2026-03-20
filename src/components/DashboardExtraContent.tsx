@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type {
   LibraryAsset,
+  ReportRecord,
   SettingCheck,
   StreamEvent,
 } from "../dashboardData/types";
@@ -20,6 +21,7 @@ import LibraryControlPanel from "./LibraryControlPanel";
 import LibraryAssetList from "./LibraryAssetList";
 import StreamControlPanel from "./StreamControlPanel";
 import StreamEventTimeline from "./StreamEventTimeline";
+import ReportsPanel from "./ReportsPanel";
 
 type DashboardExtraContentProps = {
   currentSection: NavigationSection;
@@ -84,6 +86,11 @@ type DashboardExtraContentProps = {
   onUpdateStreamEvent: (eventId: string, event: Omit<StreamEvent, "id">) => void;
   onRemoveStreamEvent: (eventId: string) => void;
   onResetStream: () => void;
+
+  reportItems: ReportRecord[];
+  selectedReportId: string | null;
+  onSelectReport: (reportId: string) => void;
+  onCycleReportStatus: (reportId: string) => void;
 };
 
 function DashboardExtraContent({
@@ -133,6 +140,10 @@ function DashboardExtraContent({
   onUpdateStreamEvent,
   onRemoveStreamEvent,
   onResetStream,
+  reportItems,
+  selectedReportId,
+  onSelectReport,
+  onCycleReportStatus,
 }: DashboardExtraContentProps) {
   const homeSignals = createHomeSignals({
     currentSection,
@@ -219,6 +230,15 @@ function DashboardExtraContent({
           onResetAssets={onResetLibrary}
         />
       </>
+    ),
+
+    レポート: (
+      <ReportsPanel
+        items={reportItems}
+        selectedReportId={selectedReportId}
+        onSelectReport={onSelectReport}
+        onCycleReportStatus={onCycleReportStatus}
+      />
     ),
 
     設定: (

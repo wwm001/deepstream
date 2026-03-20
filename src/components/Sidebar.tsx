@@ -43,6 +43,14 @@ const sectionMeta: Record<
     border: "#fde68a",
     accent: "#f59e0b",
   },
+  レポート: {
+    shortLabel: "REPORTS",
+    note: "完成レポートを読み込み、本文を確認する読書区画です。",
+    color: "#0f766e",
+    background: "#ecfeff",
+    border: "#a5f3fc",
+    accent: "#06b6d4",
+  },
   設定: {
     shortLabel: "SETTINGS",
     note: "状態監視と切り替えを行う監視区画です。",
@@ -121,7 +129,7 @@ function Sidebar({
                 overflow: "hidden",
                 textAlign: "left",
                 display: "grid",
-                gap: "10px",
+                gap: "12px",
                 width: "100%",
                 padding: "14px 14px 14px 18px",
                 borderRadius: "14px",

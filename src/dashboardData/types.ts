@@ -36,6 +36,18 @@ export type StreamEvent = {
   phase: "done" | "current" | "next";
 };
 
+export type ReportStatus = "new" | "reading" | "archived";
+
+export type ReportRecord = {
+  id: string;
+  title: string;
+  source: string;
+  createdAt: string;
+  summary: string;
+  body: string;
+  status: ReportStatus;
+};
+
 export type HomeSignal = {
   label: string;
   value: string;

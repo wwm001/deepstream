@@ -5,6 +5,7 @@ import type {
 } from "./types";
 import { streamSectionData } from "./streamData";
 import { librarySectionData } from "./libraryData";
+import { reportSectionData } from "./reportData";
 import { settingsSectionData } from "./settingsData";
 import type { NavigationSection } from "../navigationItems";
 
@@ -174,6 +175,13 @@ export function createHomeSectionSnapshots(): HomeSectionSnapshot[] {
       focus: librarySectionData.focusLabel,
       cardCount: librarySectionData.cards.length,
       note: "再利用資産の検索・整理・追加を行う棚卸し画面です。",
+    },
+    {
+      section: "レポート",
+      status: reportSectionData.statusLabel,
+      focus: reportSectionData.focusLabel,
+      cardCount: reportSectionData.cards.length,
+      note: "完成レポートを読み込み、本文を確認する読書画面です。",
     },
     {
       section: "設定",

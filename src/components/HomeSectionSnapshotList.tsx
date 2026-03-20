@@ -1,6 +1,7 @@
 import type { HomeSectionSnapshot } from "../dashboardData/types";
 import type { NavigationSection } from "../navigationItems";
 import DashboardPanel from "./DashboardPanel";
+import DashboardActionButton from "./DashboardActionButton";
 
 type HomeSectionSnapshotListProps = {
   items: HomeSectionSnapshot[];
@@ -33,6 +34,12 @@ const sectionStyles: Record<
     background: "#fffbeb",
     border: "#fde68a",
     accent: "#f59e0b",
+  },
+  レポート: {
+    color: "#0f766e",
+    background: "#ecfeff",
+    border: "#a5f3fc",
+    accent: "#06b6d4",
   },
   設定: {
     color: "#6d28d9",
@@ -257,32 +264,25 @@ function HomeSectionSnapshotList({
                 <p
                   style={{
                     margin: 0,
-                    color: "#334155",
-                    lineHeight: 1.7,
                     fontSize: "13px",
+                    lineHeight: 1.7,
+                    color: "#334155",
+                    fontWeight: 500,
                   }}
                 >
                   {item.note}
                 </p>
 
-                <div>
-                  <button
-                    type="button"
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                  }}
+                >
+                  <DashboardActionButton
+                    label="open section"
                     onClick={() => onSelectSection(item.section)}
-                    style={{
-                      border: "none",
-                      background: sectionStyle.accent,
-                      color: "#ffffff",
-                      borderRadius: "10px",
-                      padding: "10px 14px",
-                      fontSize: "13px",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      boxShadow: "0 8px 16px rgba(15, 23, 42, 0.08)",
-                    }}
-                  >
-                    open section
-                  </button>
+                  />
                 </div>
               </article>
             );

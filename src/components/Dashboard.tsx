@@ -10,8 +10,11 @@ import { dashboardSections } from "../dashboardData/sections";
 import { settingsChecks as initialSettingsChecks } from "../dashboardData/settingsData";
 import { libraryAssets as initialLibraryAssets } from "../dashboardData/libraryData";
 import { streamEvents as initialStreamEvents } from "../dashboardData/streamData";
+import { reportItems as initialReportItems } from "../dashboardData/reportData";
 import type {
   LibraryAsset,
+  ReportRecord,
+  ReportStatus,
   SettingCheck,
   StreamEvent,
 } from "../dashboardData/types";
@@ -158,6 +161,11 @@ function Dashboard({
 
   const [activityItems, setActivityItems] = useState<HomeActivityItem[]>(() =>
     readStoredActivityItems()
+  );
+
+  const [reportItems, setReportItems] = useState<ReportRecord[]>(initialReportItems);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(
+    initialReportItems[0]?.id ?? null
   );
 
   const section = dashboardSections[currentSection];
@@ -595,6 +603,40 @@ function Dashboard({
     );
   };
 
+  const handleSelectReport = (reportId: string) => {
+    setSelectedReportId(reportId);
+  };
+
+  const handleCycleReportStatus = (reportId: string) => {
+    setReportItems((currentItems) =>
+      currentItems.map((item) => {
+        if (item.id !== reportId) {
+          return item;
+        }
+
+        const nextStatusMap: Record<ReportStatus, ReportStatus> = {
+          new: "reading",
+          reading: "archived",
+          archived: "new",
+        };
+
+        const nextStatus = nextStatusMap[item.status];
+
+        pushActivity(
+          "Report Status Changed",
+          `レポート「${item.title}」の状態を ${nextStatus} に切り替えました。`,
+          "neutral",
+          "system"
+        );
+
+        return {
+          ...item,
+          status: nextStatus,
+        };
+      })
+    );
+  };
+
   return (
     <section>
       <SectionHeader
@@ -667,6 +709,10 @@ function Dashboard({
         onUpdateStreamEvent={handleUpdateStreamEventWithActivity}
         onRemoveStreamEvent={handleRemoveStreamEventWithActivity}
         onResetStream={handleResetStreamWithActivity}
+        reportItems={reportItems}
+        selectedReportId={selectedReportId}
+        onSelectReport={handleSelectReport}
+        onCycleReportStatus={handleCycleReportStatus}
       />
 
       <div
