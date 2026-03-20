@@ -27,6 +27,7 @@ type PronunciationEntry = {
 
 const PRONUNCIATION_DICTIONARY_STORAGE_KEY =
   "deepstream:report-pronunciation-dictionary";
+const REPORT_READER_VOICE_STORAGE_KEY = "deepstream:report-reader-voice-uri";
 
 const defaultPronunciationDictionary: PronunciationEntry[] = [
   { source: "Reports Queue", target: "レポートキュー" },
@@ -154,6 +155,16 @@ function readStoredPronunciationDictionary() {
   return normalizePronunciationDictionary(validEntries);
 }
 
+function readStoredVoiceURI() {
+  const parsed = readStorageJSON<unknown>(
+    REPORT_READER_VOICE_STORAGE_KEY,
+    DASHBOARD_STORAGE_NAMESPACE,
+    ""
+  );
+
+  return typeof parsed === "string" ? parsed : "";
+}
+
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -166,6 +177,43 @@ function applyPronunciationDictionary(
     const pattern = new RegExp(escapeRegExp(entry.source), "gi");
     return currentText.replace(pattern, entry.target);
   }, text);
+}
+
+function formatVoiceLabel(voice: SpeechSynthesisVoice) {
+  const parts = [voice.name, voice.lang];
+
+  if (voice.localService) {
+    parts.push("local");
+  }
+
+  if (voice.default) {
+    parts.push("default");
+  }
+
+  return parts.filter(Boolean).join(" / ");
+}
+
+function sortVoices(voices: SpeechSynthesisVoice[]) {
+  return [...voices].sort((left, right) => {
+    const leftIsJapanese = left.lang.toLowerCase().startsWith("ja");
+    const rightIsJapanese = right.lang.toLowerCase().startsWith("ja");
+
+    if (leftIsJapanese !== rightIsJapanese) {
+      return leftIsJapanese ? -1 : 1;
+    }
+
+    if (left.localService !== right.localService) {
+      return left.localService ? -1 : 1;
+    }
+
+    if (left.default !== right.default) {
+      return left.default ? -1 : 1;
+    }
+
+    return left.name.localeCompare(right.name, undefined, {
+      sensitivity: "base",
+    });
+  });
 }
 
 function ReportsPanel({
@@ -197,6 +245,13 @@ function ReportsPanel({
   const [editingDictionarySource, setEditingDictionarySource] = useState("");
   const [editingDictionaryTarget, setEditingDictionaryTarget] = useState("");
 
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>(
+    []
+  );
+  const [selectedVoiceURI, setSelectedVoiceURI] = useState<string>(() =>
+    readStoredVoiceURI()
+  );
+
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const segmentQueueRef = useRef<ReportSegment[]>([]);
   const activeReportIdRef = useRef<string | null>(null);
@@ -204,9 +259,17 @@ function ReportsPanel({
   const pronunciationDictionaryRef = useRef<PronunciationEntry[]>(
     pronunciationDictionary
   );
+  const selectedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
 
   const speechSupported =
     typeof window !== "undefined" && "speechSynthesis" in window;
+
+  const selectedVoice = useMemo(() => {
+    return (
+      availableVoices.find((voice) => voice.voiceURI === selectedVoiceURI) ??
+      null
+    );
+  }, [availableVoices, selectedVoiceURI]);
 
   useEffect(() => {
     pronunciationDictionaryRef.current = pronunciationDictionary;
@@ -217,6 +280,48 @@ function ReportsPanel({
       DASHBOARD_STORAGE_NAMESPACE
     );
   }, [pronunciationDictionary]);
+
+  useEffect(() => {
+    writeStorageJSON(
+      REPORT_READER_VOICE_STORAGE_KEY,
+      selectedVoiceURI,
+      DASHBOARD_STORAGE_NAMESPACE
+    );
+  }, [selectedVoiceURI]);
+
+  useEffect(() => {
+    selectedVoiceRef.current = selectedVoice;
+  }, [selectedVoice]);
+
+  useEffect(() => {
+    if (!speechSupported) {
+      return;
+    }
+
+    const synthesis = window.speechSynthesis;
+
+    const loadVoices = () => {
+      const voices = sortVoices(synthesis.getVoices());
+      setAvailableVoices(voices);
+    };
+
+    loadVoices();
+
+    if (typeof synthesis.addEventListener === "function") {
+      synthesis.addEventListener("voiceschanged", loadVoices);
+
+      return () => {
+        synthesis.removeEventListener("voiceschanged", loadVoices);
+      };
+    }
+
+    const previousHandler = synthesis.onvoiceschanged;
+    synthesis.onvoiceschanged = loadVoices;
+
+    return () => {
+      synthesis.onvoiceschanged = previousHandler;
+    };
+  }, [speechSupported]);
 
   const filteredItems = useMemo(() => {
     const normalizedSearchTerm = searchTerm.trim().toLowerCase();
@@ -434,8 +539,15 @@ function ReportsPanel({
         pronunciationDictionaryRef.current
       )
     );
+
+    const activeVoice = selectedVoiceRef.current;
+
     utterance.rate = playbackRate;
-    utterance.lang = "ja-JP";
+    utterance.lang = activeVoice?.lang || "ja-JP";
+
+    if (activeVoice) {
+      utterance.voice = activeVoice;
+    }
 
     utterance.onstart = () => {
       if (playbackSessionIdRef.current !== sessionId) {
@@ -602,6 +714,16 @@ function ReportsPanel({
     currentSegmentIndex != null &&
     currentSegmentIndex < selectedSegments.length - 1;
 
+  const voiceStatusLabel = !speechSupported
+    ? "speech unavailable"
+    : availableVoices.length === 0
+      ? "loading voices..."
+      : selectedVoice
+        ? formatVoiceLabel(selectedVoice)
+        : selectedVoiceURI
+          ? "stored voice unavailable"
+          : "default system voice";
+
   return (
     <div
       style={{
@@ -720,87 +842,148 @@ function ReportsPanel({
             pronunciation dictionary active: {pronunciationDictionary.length}{" "}
             entries
           </p>
+
+          <p
+            style={{
+              margin: 0,
+              fontSize: "12px",
+              lineHeight: 1.6,
+              color: "#64748b",
+              wordBreak: "break-word",
+            }}
+          >
+            voice: {voiceStatusLabel}
+          </p>
         </div>
 
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
+            display: "grid",
             gap: "8px",
-            flexWrap: "wrap",
-            justifyContent: "flex-end",
             marginLeft: "auto",
+            minWidth: "280px",
+            maxWidth: "100%",
           }}
         >
-          <label
+          <div
             style={{
-              fontSize: "12px",
-              color: "#475569",
-              fontWeight: 600,
+              display: "grid",
+              gridTemplateColumns: "auto minmax(180px, 1fr)",
+              alignItems: "center",
+              gap: "8px",
             }}
           >
-            speed
-          </label>
+            <label
+              style={{
+                fontSize: "12px",
+                color: "#475569",
+                fontWeight: 600,
+              }}
+            >
+              speed
+            </label>
 
-          <select
-            value={playbackRate}
-            onChange={(event) =>
-              setPlaybackRate(
-                Number(event.target.value) as (typeof playbackRates)[number]
-              )
-            }
+            <select
+              value={playbackRate}
+              onChange={(event) =>
+                setPlaybackRate(
+                  Number(event.target.value) as (typeof playbackRates)[number]
+                )
+              }
+              style={{
+                padding: "8px 10px",
+                borderRadius: "10px",
+                border: "1px solid #d1d5db",
+                background: "#ffffff",
+                color: "#111827",
+                fontSize: "13px",
+              }}
+            >
+              {playbackRates.map((rate) => (
+                <option key={rate} value={rate}>
+                  {rate.toFixed(1)}x
+                </option>
+              ))}
+            </select>
+
+            <label
+              style={{
+                fontSize: "12px",
+                color: "#475569",
+                fontWeight: 600,
+              }}
+            >
+              voice
+            </label>
+
+            <select
+              value={selectedVoiceURI}
+              onChange={(event) => setSelectedVoiceURI(event.target.value)}
+              disabled={!speechSupported}
+              style={{
+                padding: "8px 10px",
+                borderRadius: "10px",
+                border: "1px solid #d1d5db",
+                background: speechSupported ? "#ffffff" : "#f8fafc",
+                color: "#111827",
+                fontSize: "13px",
+              }}
+            >
+              <option value="">default system voice</option>
+              {availableVoices.map((voice) => (
+                <option key={voice.voiceURI} value={voice.voiceURI}>
+                  {formatVoiceLabel(voice)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div
             style={{
-              padding: "8px 10px",
-              borderRadius: "10px",
-              border: "1px solid #d1d5db",
-              background: "#ffffff",
-              color: "#111827",
-              fontSize: "13px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              flexWrap: "wrap",
+              justifyContent: "flex-end",
             }}
           >
-            {playbackRates.map((rate) => (
-              <option key={rate} value={rate}>
-                {rate.toFixed(1)}x
-              </option>
-            ))}
-          </select>
-
-          <DashboardActionButton
-            label="read aloud"
-            onClick={startReading}
-            disabled={!speechSupported || !selectedReport}
-          />
-
-          <DashboardActionButton
-            label="skip next"
-            onClick={skipToNextSegment}
-            disabled={!canSkipNext}
-          />
-
-          <DashboardActionButton
-            label="pause"
-            onClick={pauseReading}
-            disabled={!isReading || isPaused}
-          />
-
-          <DashboardActionButton
-            label="resume"
-            onClick={resumeReading}
-            disabled={!isReading || !isPaused}
-          />
-
-          <DashboardActionButton
-            label="stop"
-            onClick={stopReading}
-            disabled={!isReading}
-          />
-
-          {selectedReport && (
             <DashboardActionButton
-              label={`status: ${selectedReport.status}`}
-              onClick={() => onCycleReportStatus(selectedReport.id)}
+              label="read aloud"
+              onClick={startReading}
+              disabled={!speechSupported || !selectedReport}
             />
-          )}
+
+            <DashboardActionButton
+              label="skip next"
+              onClick={skipToNextSegment}
+              disabled={!canSkipNext}
+            />
+
+            <DashboardActionButton
+              label="pause"
+              onClick={pauseReading}
+              disabled={!isReading || isPaused}
+            />
+
+            <DashboardActionButton
+              label="resume"
+              onClick={resumeReading}
+              disabled={!isReading || !isPaused}
+            />
+
+            <DashboardActionButton
+              label="stop"
+              onClick={stopReading}
+              disabled={!isReading}
+            />
+
+            {selectedReport && (
+              <DashboardActionButton
+                label={`status: ${selectedReport.status}`}
+                onClick={() => onCycleReportStatus(selectedReport.id)}
+              />
+            )}
+          </div>
         </div>
       </section>
 
