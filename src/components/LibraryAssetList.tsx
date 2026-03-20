@@ -19,6 +19,7 @@ type LibraryAssetListProps = {
   items: LibraryAssetItem[];
   onRemoveAsset?: (assetId: string) => void;
   onAddAsset?: (asset: Omit<LibraryAsset, "id">) => void;
+  onUpdateAsset?: (assetId: string, asset: Omit<LibraryAsset, "id">) => void;
   onResetAssets?: () => void;
 };
 
@@ -78,6 +79,7 @@ function LibraryAssetList({
   items,
   onRemoveAsset,
   onAddAsset,
+  onUpdateAsset,
   onResetAssets,
 }: LibraryAssetListProps) {
   const [name, setName] = useState("");
@@ -87,6 +89,13 @@ function LibraryAssetList({
   const [errors, setErrors] = useState<AssetFormErrors>({});
   const [submitMessage, setSubmitMessage] = useState("");
 
+  const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [editingRole, setEditingRole] = useState("");
+  const [editingNote, setEditingNote] = useState("");
+  const [editingState, setEditingState] = useState<LibraryAsset["state"]>("active");
+  const [editingErrors, setEditingErrors] = useState<AssetFormErrors>({});
+
   const formRef = useRef<HTMLFormElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const roleInputRef = useRef<HTMLInputElement>(null);
@@ -95,6 +104,10 @@ function LibraryAssetList({
   const trimmedName = name.trim();
   const trimmedRole = role.trim();
   const trimmedNote = note.trim();
+
+  const trimmedEditingName = editingName.trim();
+  const trimmedEditingRole = editingRole.trim();
+  const trimmedEditingNote = editingNote.trim();
 
   const canSubmit = useMemo(() => {
     return (
@@ -191,6 +204,11 @@ function LibraryAssetList({
     }
 
     onRemoveAsset(asset.id);
+
+    if (editingAssetId === asset.id) {
+      setEditingAssetId(null);
+      setEditingErrors({});
+    }
   };
 
   const handleConfirmReset = () => {
@@ -207,6 +225,53 @@ function LibraryAssetList({
     }
 
     onResetAssets();
+    setEditingAssetId(null);
+    setEditingErrors({});
+  };
+
+  const handleStartEdit = (asset: LibraryAssetItem) => {
+    if (!asset.id) {
+      return;
+    }
+
+    setEditingAssetId(asset.id);
+    setEditingName(asset.name);
+    setEditingRole(asset.role);
+    setEditingNote(asset.note);
+    setEditingState(asset.state);
+    setEditingErrors({});
+  };
+
+  const handleCancelEdit = () => {
+    setEditingAssetId(null);
+    setEditingErrors({});
+  };
+
+  const handleSaveEdit = (asset: LibraryAssetItem) => {
+    if (!asset.id || !onUpdateAsset) {
+      return;
+    }
+
+    const nextErrors = validateAssetInput({
+      name: trimmedEditingName,
+      role: trimmedEditingRole,
+      note: trimmedEditingNote,
+    });
+
+    if (Object.keys(nextErrors).length > 0) {
+      setEditingErrors(nextErrors);
+      return;
+    }
+
+    onUpdateAsset(asset.id, {
+      name: trimmedEditingName,
+      role: trimmedEditingRole,
+      note: trimmedEditingNote,
+      state: editingState,
+    });
+
+    setEditingAssetId(null);
+    setEditingErrors({});
   };
 
   return (
@@ -501,6 +566,7 @@ function LibraryAssetList({
         >
           {items.map((item) => {
             const stateStyle = stateStyles[item.state];
+            const isEditing = editingAssetId === item.id;
 
             return (
               <DashboardTile
@@ -516,41 +582,216 @@ function LibraryAssetList({
                     }}
                   >
                     <DashboardBadge
-                      label={item.state}
+                      label={isEditing ? editingState : item.state}
                       color={stateStyle.color}
                       background={stateStyle.background}
                     />
 
-                    {onRemoveAsset && item.id && (
-                      <DashboardActionButton
-                        label="remove"
-                        onClick={() => handleConfirmRemove(item)}
-                      />
+                    {isEditing ? (
+                      <>
+                        <DashboardActionButton
+                          label="save"
+                          onClick={() => handleSaveEdit(item)}
+                        />
+                        <DashboardActionButton
+                          label="cancel"
+                          onClick={handleCancelEdit}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        {onUpdateAsset && item.id && (
+                          <DashboardActionButton
+                            label="edit"
+                            onClick={() => handleStartEdit(item)}
+                          />
+                        )}
+                        {onRemoveAsset && item.id && (
+                          <DashboardActionButton
+                            label="remove"
+                            onClick={() => handleConfirmRemove(item)}
+                          />
+                        )}
+                      </>
                     )}
                   </div>
                 }
               >
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: "14px",
-                    fontWeight: 600,
-                    color: "#111827",
-                  }}
-                >
-                  {item.role}
-                </p>
+                {isEditing ? (
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: "10px",
+                    }}
+                  >
+                    <div>
+                      <input
+                        type="text"
+                        value={editingName}
+                        maxLength={NAME_MAX_LENGTH}
+                        onChange={(event) => {
+                          setEditingName(event.target.value);
+                          setEditingErrors((current) => ({
+                            ...current,
+                            name: undefined,
+                          }));
+                        }}
+                        placeholder="name"
+                        style={{
+                          width: "100%",
+                          padding: "10px 12px",
+                          borderRadius: "10px",
+                          border: editingErrors.name
+                            ? "1px solid #dc2626"
+                            : "1px solid #d1d5db",
+                          background: "#ffffff",
+                          color: "#111827",
+                          fontSize: "14px",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                      {editingErrors.name && (
+                        <p
+                          style={{
+                            margin: "6px 0 0 0",
+                            color: "#b91c1c",
+                            fontSize: "12px",
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {editingErrors.name}
+                        </p>
+                      )}
+                    </div>
 
-                <p
-                  style={{
-                    margin: "8px 0 0 0",
-                    color: "#4b5563",
-                    lineHeight: 1.6,
-                    fontSize: "14px",
-                  }}
-                >
-                  {item.note}
-                </p>
+                    <div>
+                      <input
+                        type="text"
+                        value={editingRole}
+                        maxLength={ROLE_MAX_LENGTH}
+                        onChange={(event) => {
+                          setEditingRole(event.target.value);
+                          setEditingErrors((current) => ({
+                            ...current,
+                            role: undefined,
+                          }));
+                        }}
+                        placeholder="role"
+                        style={{
+                          width: "100%",
+                          padding: "10px 12px",
+                          borderRadius: "10px",
+                          border: editingErrors.role
+                            ? "1px solid #dc2626"
+                            : "1px solid #d1d5db",
+                          background: "#ffffff",
+                          color: "#111827",
+                          fontSize: "14px",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                      {editingErrors.role && (
+                        <p
+                          style={{
+                            margin: "6px 0 0 0",
+                            color: "#b91c1c",
+                            fontSize: "12px",
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {editingErrors.role}
+                        </p>
+                      )}
+                    </div>
+
+                    <select
+                      value={editingState}
+                      onChange={(event) =>
+                        setEditingState(event.target.value as LibraryAsset["state"])
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        borderRadius: "10px",
+                        border: "1px solid #d1d5db",
+                        background: "#ffffff",
+                        color: "#111827",
+                        fontSize: "14px",
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      <option value="stable">stable</option>
+                      <option value="active">active</option>
+                      <option value="next">next</option>
+                    </select>
+
+                    <div>
+                      <textarea
+                        value={editingNote}
+                        maxLength={NOTE_MAX_LENGTH}
+                        onChange={(event) => {
+                          setEditingNote(event.target.value);
+                          setEditingErrors((current) => ({
+                            ...current,
+                            note: undefined,
+                          }));
+                        }}
+                        placeholder="note"
+                        rows={4}
+                        style={{
+                          width: "100%",
+                          padding: "10px 12px",
+                          borderRadius: "10px",
+                          border: editingErrors.note
+                            ? "1px solid #dc2626"
+                            : "1px solid #d1d5db",
+                          background: "#ffffff",
+                          color: "#111827",
+                          fontSize: "14px",
+                          boxSizing: "border-box",
+                          resize: "vertical",
+                          fontFamily: "inherit",
+                        }}
+                      />
+                      {editingErrors.note && (
+                        <p
+                          style={{
+                            margin: "6px 0 0 0",
+                            color: "#b91c1c",
+                            fontSize: "12px",
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {editingErrors.note}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: "14px",
+                        fontWeight: 600,
+                        color: "#111827",
+                      }}
+                    >
+                      {item.role}
+                    </p>
+
+                    <p
+                      style={{
+                        margin: "8px 0 0 0",
+                        color: "#4b5563",
+                        lineHeight: 1.6,
+                        fontSize: "14px",
+                      }}
+                    >
+                      {item.note}
+                    </p>
+                  </>
+                )}
               </DashboardTile>
             );
           })}

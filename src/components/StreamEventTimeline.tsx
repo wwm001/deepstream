@@ -18,6 +18,7 @@ type StreamEventTimelineProps = {
   items: StreamEventItem[];
   onRemoveEvent?: (eventId: string) => void;
   onAddEvent?: (event: Omit<StreamEvent, "id">) => void;
+  onUpdateEvent?: (eventId: string, event: Omit<StreamEvent, "id">) => void;
   onResetEvents?: () => void;
 };
 
@@ -72,6 +73,7 @@ function StreamEventTimeline({
   items,
   onRemoveEvent,
   onAddEvent,
+  onUpdateEvent,
   onResetEvents,
 }: StreamEventTimelineProps) {
   const [title, setTitle] = useState("");
@@ -80,12 +82,20 @@ function StreamEventTimeline({
   const [errors, setErrors] = useState<StreamFormErrors>({});
   const [submitMessage, setSubmitMessage] = useState("");
 
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const [editingDetail, setEditingDetail] = useState("");
+  const [editingPhase, setEditingPhase] = useState<StreamEvent["phase"]>("current");
+  const [editingErrors, setEditingErrors] = useState<StreamFormErrors>({});
+
   const formRef = useRef<HTMLFormElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const detailTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const trimmedTitle = title.trim();
   const trimmedDetail = detail.trim();
+  const trimmedEditingTitle = editingTitle.trim();
+  const trimmedEditingDetail = editingDetail.trim();
 
   const canSubmit = useMemo(() => {
     return (
@@ -174,6 +184,11 @@ function StreamEventTimeline({
     }
 
     onRemoveEvent(item.id);
+
+    if (editingEventId === item.id) {
+      setEditingEventId(null);
+      setEditingErrors({});
+    }
   };
 
   const handleConfirmReset = () => {
@@ -190,6 +205,50 @@ function StreamEventTimeline({
     }
 
     onResetEvents();
+    setEditingEventId(null);
+    setEditingErrors({});
+  };
+
+  const handleStartEdit = (item: StreamEventItem) => {
+    if (!item.id) {
+      return;
+    }
+
+    setEditingEventId(item.id);
+    setEditingTitle(item.title);
+    setEditingDetail(item.detail);
+    setEditingPhase(item.phase);
+    setEditingErrors({});
+  };
+
+  const handleCancelEdit = () => {
+    setEditingEventId(null);
+    setEditingErrors({});
+  };
+
+  const handleSaveEdit = (item: StreamEventItem) => {
+    if (!item.id || !onUpdateEvent) {
+      return;
+    }
+
+    const nextErrors = validateStreamInput({
+      title: trimmedEditingTitle,
+      detail: trimmedEditingDetail,
+    });
+
+    if (Object.keys(nextErrors).length > 0) {
+      setEditingErrors(nextErrors);
+      return;
+    }
+
+    onUpdateEvent(item.id, {
+      title: trimmedEditingTitle,
+      detail: trimmedEditingDetail,
+      phase: editingPhase,
+    });
+
+    setEditingEventId(null);
+    setEditingErrors({});
   };
 
   return (
@@ -443,6 +502,7 @@ function StreamEventTimeline({
         >
           {items.map((item, index) => {
             const phaseStyle = phaseStyles[item.phase];
+            const isEditing = editingEventId === item.id;
 
             return (
               <article
@@ -507,7 +567,7 @@ function StreamEventTimeline({
                         color: "#111827",
                       }}
                     >
-                      {item.title}
+                      {isEditing ? "Editing Event" : item.title}
                     </h3>
 
                     <div
@@ -519,31 +579,165 @@ function StreamEventTimeline({
                       }}
                     >
                       <DashboardBadge
-                        label={item.phase}
+                        label={isEditing ? editingPhase : item.phase}
                         color={phaseStyle.color}
                         background="#ffffff"
                         borderColor={phaseStyle.border}
                       />
 
-                      {onRemoveEvent && item.id && (
-                        <DashboardActionButton
-                          label="remove"
-                          onClick={() => handleConfirmRemove(item)}
-                        />
+                      {isEditing ? (
+                        <>
+                          <DashboardActionButton
+                            label="save"
+                            onClick={() => handleSaveEdit(item)}
+                          />
+                          <DashboardActionButton
+                            label="cancel"
+                            onClick={handleCancelEdit}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          {onUpdateEvent && item.id && (
+                            <DashboardActionButton
+                              label="edit"
+                              onClick={() => handleStartEdit(item)}
+                            />
+                          )}
+                          {onRemoveEvent && item.id && (
+                            <DashboardActionButton
+                              label="remove"
+                              onClick={() => handleConfirmRemove(item)}
+                            />
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
 
-                  <p
-                    style={{
-                      margin: "10px 0 0 0",
-                      color: "#374151",
-                      lineHeight: 1.7,
-                      fontSize: "14px",
-                    }}
-                  >
-                    {item.detail}
-                  </p>
+                  {isEditing ? (
+                    <div
+                      style={{
+                        display: "grid",
+                        gap: "10px",
+                        marginTop: "10px",
+                      }}
+                    >
+                      <div>
+                        <input
+                          type="text"
+                          value={editingTitle}
+                          maxLength={TITLE_MAX_LENGTH}
+                          onChange={(event) => {
+                            setEditingTitle(event.target.value);
+                            setEditingErrors((current) => ({
+                              ...current,
+                              title: undefined,
+                            }));
+                          }}
+                          placeholder="title"
+                          style={{
+                            width: "100%",
+                            padding: "10px 12px",
+                            borderRadius: "10px",
+                            border: editingErrors.title
+                              ? "1px solid #dc2626"
+                              : "1px solid #d1d5db",
+                            background: "#ffffff",
+                            color: "#111827",
+                            fontSize: "14px",
+                            boxSizing: "border-box",
+                          }}
+                        />
+                        {editingErrors.title && (
+                          <p
+                            style={{
+                              margin: "6px 0 0 0",
+                              color: "#b91c1c",
+                              fontSize: "12px",
+                              lineHeight: 1.5,
+                            }}
+                          >
+                            {editingErrors.title}
+                          </p>
+                        )}
+                      </div>
+
+                      <select
+                        value={editingPhase}
+                        onChange={(event) =>
+                          setEditingPhase(event.target.value as StreamEvent["phase"])
+                        }
+                        style={{
+                          width: "100%",
+                          padding: "10px 12px",
+                          borderRadius: "10px",
+                          border: "1px solid #d1d5db",
+                          background: "#ffffff",
+                          color: "#111827",
+                          fontSize: "14px",
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        <option value="done">done</option>
+                        <option value="current">current</option>
+                        <option value="next">next</option>
+                      </select>
+
+                      <div>
+                        <textarea
+                          value={editingDetail}
+                          maxLength={DETAIL_MAX_LENGTH}
+                          onChange={(event) => {
+                            setEditingDetail(event.target.value);
+                            setEditingErrors((current) => ({
+                              ...current,
+                              detail: undefined,
+                            }));
+                          }}
+                          placeholder="detail"
+                          rows={4}
+                          style={{
+                            width: "100%",
+                            padding: "10px 12px",
+                            borderRadius: "10px",
+                            border: editingErrors.detail
+                              ? "1px solid #dc2626"
+                              : "1px solid #d1d5db",
+                            background: "#ffffff",
+                            color: "#111827",
+                            fontSize: "14px",
+                            boxSizing: "border-box",
+                            resize: "vertical",
+                            fontFamily: "inherit",
+                          }}
+                        />
+                        {editingErrors.detail && (
+                          <p
+                            style={{
+                              margin: "6px 0 0 0",
+                              color: "#b91c1c",
+                              fontSize: "12px",
+                              lineHeight: 1.5,
+                            }}
+                          >
+                            {editingErrors.detail}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <p
+                      style={{
+                        margin: "10px 0 0 0",
+                        color: "#374151",
+                        lineHeight: 1.7,
+                        fontSize: "14px",
+                      }}
+                    >
+                      {item.detail}
+                    </p>
+                  )}
                 </div>
               </article>
             );

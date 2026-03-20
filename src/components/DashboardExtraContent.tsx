@@ -62,6 +62,7 @@ type DashboardExtraContentProps = {
   onSetLibrarySort: (sort: "name" | "state") => void;
   onSetLibrarySearchTerm: (searchTerm: string) => void;
   onAddLibraryAsset: (asset: Omit<LibraryAsset, "id">) => void;
+  onUpdateLibraryAsset: (assetId: string, asset: Omit<LibraryAsset, "id">) => void;
   onRemoveLibraryAsset: (assetId: string) => void;
   onResetLibrary: () => void;
 
@@ -79,6 +80,7 @@ type DashboardExtraContentProps = {
   onSetStreamFilter: (filter: "all" | StreamEvent["phase"]) => void;
   onSetStreamSort: (sort: "timeline" | "newest" | "planned") => void;
   onAddStreamEvent: (event: Omit<StreamEvent, "id">) => void;
+  onUpdateStreamEvent: (eventId: string, event: Omit<StreamEvent, "id">) => void;
   onRemoveStreamEvent: (eventId: string) => void;
   onResetStream: () => void;
 };
@@ -113,6 +115,7 @@ function DashboardExtraContent({
   onSetLibrarySort,
   onSetLibrarySearchTerm,
   onAddLibraryAsset,
+  onUpdateLibraryAsset,
   onRemoveLibraryAsset,
   onResetLibrary,
   filteredStreamEvents,
@@ -125,6 +128,7 @@ function DashboardExtraContent({
   onSetStreamFilter,
   onSetStreamSort,
   onAddStreamEvent,
+  onUpdateStreamEvent,
   onRemoveStreamEvent,
   onResetStream,
 }: DashboardExtraContentProps) {
@@ -183,6 +187,7 @@ function DashboardExtraContent({
         <StreamEventTimeline
           items={filteredStreamEvents}
           onAddEvent={onAddStreamEvent}
+          onUpdateEvent={onUpdateStreamEvent}
           onRemoveEvent={onRemoveStreamEvent}
           onResetEvents={onResetStream}
         />
@@ -204,6 +209,7 @@ function DashboardExtraContent({
         <LibraryAssetList
           items={filteredLibraryAssets}
           onAddAsset={onAddLibraryAsset}
+          onUpdateAsset={onUpdateLibraryAsset}
           onRemoveAsset={onRemoveLibraryAsset}
           onResetAssets={onResetLibrary}
         />

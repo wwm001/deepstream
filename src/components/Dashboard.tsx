@@ -356,6 +356,42 @@ function Dashboard({
     );
   };
 
+  const handleUpdateLibraryAssetWithActivity = (
+    assetId: string,
+    asset: Omit<LibraryAsset, "id">
+  ) => {
+    const targetAsset = libraryItems.find((item) => item.id === assetId);
+    const trimmedName = asset.name.trim();
+    const trimmedRole = asset.role.trim();
+    const trimmedNote = asset.note.trim();
+
+    if (!trimmedName || !trimmedRole || !trimmedNote) {
+      return;
+    }
+
+    setLibraryItems((currentItems) =>
+      currentItems.map((item) =>
+        item.id === assetId
+          ? {
+              ...item,
+              name: trimmedName,
+              role: trimmedRole,
+              note: trimmedNote,
+              state: asset.state,
+            }
+          : item
+      )
+    );
+
+    pushActivity(
+      "Library Asset Edited",
+      targetAsset
+        ? `ライブラリアセット「${targetAsset.name}」を更新しました。`
+        : "ライブラリアセットを更新しました。",
+      "success"
+    );
+  };
+
   const handleRemoveLibraryAssetWithActivity = (assetId: string) => {
     const targetAsset = libraryItems.find((item) => item.id === assetId);
 
@@ -412,6 +448,40 @@ function Dashboard({
     pushActivity(
       "Stream Event Added",
       `ストリームイベント「${trimmedTitle}」を追加しました。`,
+      "success"
+    );
+  };
+
+  const handleUpdateStreamEventWithActivity = (
+    eventId: string,
+    event: Omit<StreamEvent, "id">
+  ) => {
+    const targetEvent = streamItems.find((item) => item.id === eventId);
+    const trimmedTitle = event.title.trim();
+    const trimmedDetail = event.detail.trim();
+
+    if (!trimmedTitle || !trimmedDetail) {
+      return;
+    }
+
+    setStreamItems((currentItems) =>
+      currentItems.map((item) =>
+        item.id === eventId
+          ? {
+              ...item,
+              title: trimmedTitle,
+              detail: trimmedDetail,
+              phase: event.phase,
+            }
+          : item
+      )
+    );
+
+    pushActivity(
+      "Stream Event Edited",
+      targetEvent
+        ? `ストリームイベント「${targetEvent.title}」を更新しました。`
+        : "ストリームイベントを更新しました。",
       "success"
     );
   };
@@ -493,6 +563,7 @@ function Dashboard({
         onSetLibrarySort={handleSetLibrarySortWithActivity}
         onSetLibrarySearchTerm={handleSetLibrarySearchTermWithActivity}
         onAddLibraryAsset={handleAddLibraryAssetWithActivity}
+        onUpdateLibraryAsset={handleUpdateLibraryAssetWithActivity}
         onRemoveLibraryAsset={handleRemoveLibraryAssetWithActivity}
         onResetLibrary={handleResetLibraryWithActivity}
         filteredStreamEvents={filteredStreamEvents}
@@ -505,6 +576,7 @@ function Dashboard({
         onSetStreamFilter={handleSetStreamFilterWithActivity}
         onSetStreamSort={handleSetStreamSortWithActivity}
         onAddStreamEvent={handleAddStreamEventWithActivity}
+        onUpdateStreamEvent={handleUpdateStreamEventWithActivity}
         onRemoveStreamEvent={handleRemoveStreamEventWithActivity}
         onResetStream={handleResetStreamWithActivity}
       />
