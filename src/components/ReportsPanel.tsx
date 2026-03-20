@@ -47,6 +47,7 @@ function ReportsPanel({
   const [playbackRate, setPlaybackRate] =
     useState<(typeof playbackRates)[number]>(1.0);
   const [isReading, setIsReading] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [readingReportId, setReadingReportId] = useState<string | null>(null);
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -70,7 +71,26 @@ function ReportsPanel({
     window.speechSynthesis.cancel();
     utteranceRef.current = null;
     setIsReading(false);
+    setIsPaused(false);
     setReadingReportId(null);
+  };
+
+  const pauseReading = () => {
+    if (!speechSupported || !isReading || isPaused) {
+      return;
+    }
+
+    window.speechSynthesis.pause();
+    setIsPaused(true);
+  };
+
+  const resumeReading = () => {
+    if (!speechSupported || !isReading || !isPaused) {
+      return;
+    }
+
+    window.speechSynthesis.resume();
+    setIsPaused(false);
   };
 
   const startReading = () => {
@@ -88,19 +108,30 @@ function ReportsPanel({
 
     utterance.onstart = () => {
       setIsReading(true);
+      setIsPaused(false);
       setReadingReportId(selectedReport.id);
     };
 
     utterance.onend = () => {
       setIsReading(false);
+      setIsPaused(false);
       setReadingReportId(null);
       utteranceRef.current = null;
     };
 
     utterance.onerror = () => {
       setIsReading(false);
+      setIsPaused(false);
       setReadingReportId(null);
       utteranceRef.current = null;
+    };
+
+    utterance.onpause = () => {
+      setIsPaused(true);
+    };
+
+    utterance.onresume = () => {
+      setIsPaused(false);
     };
 
     utteranceRef.current = utterance;
@@ -188,14 +219,18 @@ function ReportsPanel({
               color: !speechSupported
                 ? "#b45309"
                 : isReading && readingReportId === selectedReport?.id
-                ? "#047857"
+                ? isPaused
+                  ? "#b45309"
+                  : "#047857"
                 : "#64748b",
             }}
           >
             {!speechSupported
               ? "このブラウザでは読み上げを利用できません"
               : isReading && readingReportId === selectedReport?.id
-              ? `reading aloud at ${playbackRate.toFixed(1)}x`
+              ? isPaused
+                ? `paused at ${playbackRate.toFixed(1)}x`
+                : `reading aloud at ${playbackRate.toFixed(1)}x`
               : selectedReport
               ? `selected report: ${selectedReport.title}`
               : "selected report ready"}
@@ -249,6 +284,18 @@ function ReportsPanel({
             label="read aloud"
             onClick={startReading}
             disabled={!speechSupported || !selectedReport}
+          />
+
+          <DashboardActionButton
+            label="pause"
+            onClick={pauseReading}
+            disabled={!isReading || isPaused}
+          />
+
+          <DashboardActionButton
+            label="resume"
+            onClick={resumeReading}
+            disabled={!isReading || !isPaused}
           />
 
           <DashboardActionButton
