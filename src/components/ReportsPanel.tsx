@@ -141,6 +141,10 @@ function readStoredPronunciationDictionary() {
     return normalizePronunciationDictionary(defaultPronunciationDictionary);
   }
 
+  if (parsed.length === 0) {
+    return [];
+  }
+
   const validEntries = parsed.filter(isValidPronunciationEntry);
 
   if (validEntries.length === 0) {
@@ -181,19 +185,32 @@ function ReportsPanel({
 
   const [reportFilter, setReportFilter] = useState<ReportFilter>("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [pronunciationDictionary] = useState<PronunciationEntry[]>(() =>
-    readStoredPronunciationDictionary()
-  );
+  const [pronunciationDictionary, setPronunciationDictionary] = useState<
+    PronunciationEntry[]
+  >(() => readStoredPronunciationDictionary());
+  const [dictionarySourceInput, setDictionarySourceInput] = useState("");
+  const [dictionaryTargetInput, setDictionaryTargetInput] = useState("");
+  const [dictionaryError, setDictionaryError] = useState<string | null>(null);
+  const [editingDictionaryKey, setEditingDictionaryKey] = useState<
+    string | null
+  >(null);
+  const [editingDictionarySource, setEditingDictionarySource] = useState("");
+  const [editingDictionaryTarget, setEditingDictionaryTarget] = useState("");
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const segmentQueueRef = useRef<ReportSegment[]>([]);
   const activeReportIdRef = useRef<string | null>(null);
   const playbackSessionIdRef = useRef(0);
+  const pronunciationDictionaryRef = useRef<PronunciationEntry[]>(
+    pronunciationDictionary
+  );
 
   const speechSupported =
     typeof window !== "undefined" && "speechSynthesis" in window;
 
   useEffect(() => {
+    pronunciationDictionaryRef.current = pronunciationDictionary;
+
     writeStorageJSON(
       PRONUNCIATION_DICTIONARY_STORAGE_KEY,
       pronunciationDictionary,
@@ -261,6 +278,117 @@ function ReportsPanel({
     [items]
   );
 
+  const resetDictionaryInputs = () => {
+    setDictionarySourceInput("");
+    setDictionaryTargetInput("");
+  };
+
+  const cancelDictionaryEditing = () => {
+    setEditingDictionaryKey(null);
+    setEditingDictionarySource("");
+    setEditingDictionaryTarget("");
+  };
+
+  const upsertPronunciationEntry = (
+    sourceValue: string,
+    targetValue: string,
+    previousSourceKey?: string | null
+  ) => {
+    const normalizedSource = sourceValue.trim();
+    const normalizedTarget = targetValue.trim();
+
+    if (normalizedSource.length === 0 || normalizedTarget.length === 0) {
+      setDictionaryError("source と target の両方を入力してください。");
+      return false;
+    }
+
+    const nextEntries = normalizePronunciationDictionary([
+      ...pronunciationDictionary.filter((entry) => {
+        const entryKey = entry.source.toLowerCase();
+
+        if (previousSourceKey && entryKey === previousSourceKey) {
+          return false;
+        }
+
+        if (entryKey === normalizedSource.toLowerCase()) {
+          return false;
+        }
+
+        return true;
+      }),
+      {
+        source: normalizedSource,
+        target: normalizedTarget,
+      },
+    ]);
+
+    setPronunciationDictionary(nextEntries);
+    setDictionaryError(null);
+    return true;
+  };
+
+  const handleDictionaryAdd = () => {
+    const added = upsertPronunciationEntry(
+      dictionarySourceInput,
+      dictionaryTargetInput
+    );
+
+    if (!added) {
+      return;
+    }
+
+    resetDictionaryInputs();
+  };
+
+  const handleDictionaryEditStart = (entry: PronunciationEntry) => {
+    setEditingDictionaryKey(entry.source.toLowerCase());
+    setEditingDictionarySource(entry.source);
+    setEditingDictionaryTarget(entry.target);
+    setDictionaryError(null);
+  };
+
+  const handleDictionaryEditSave = () => {
+    if (!editingDictionaryKey) {
+      return;
+    }
+
+    const saved = upsertPronunciationEntry(
+      editingDictionarySource,
+      editingDictionaryTarget,
+      editingDictionaryKey
+    );
+
+    if (!saved) {
+      return;
+    }
+
+    cancelDictionaryEditing();
+  };
+
+  const handleDictionaryRemove = (entry: PronunciationEntry) => {
+    const shouldRemove =
+      typeof window === "undefined"
+        ? true
+        : window.confirm(`"${entry.source}" を辞書から削除しますか？`);
+
+    if (!shouldRemove) {
+      return;
+    }
+
+    setPronunciationDictionary((currentEntries) =>
+      currentEntries.filter(
+        (currentEntry) =>
+          currentEntry.source.toLowerCase() !== entry.source.toLowerCase()
+      )
+    );
+
+    if (editingDictionaryKey === entry.source.toLowerCase()) {
+      cancelDictionaryEditing();
+    }
+
+    setDictionaryError(null);
+  };
+
   const finishReading = (sessionId?: number) => {
     if (
       typeof sessionId === "number" &&
@@ -301,7 +429,10 @@ function ReportsPanel({
     }
 
     const utterance = new SpeechSynthesisUtterance(
-      applyPronunciationDictionary(segment.text, pronunciationDictionary)
+      applyPronunciationDictionary(
+        segment.text,
+        pronunciationDictionaryRef.current
+      )
     );
     utterance.rate = playbackRate;
     utterance.lang = "ja-JP";
@@ -586,7 +717,8 @@ function ReportsPanel({
               color: "#64748b",
             }}
           >
-            pronunciation dictionary active: {pronunciationDictionary.length} entries
+            pronunciation dictionary active: {pronunciationDictionary.length}{" "}
+            entries
           </p>
         </div>
 
@@ -671,6 +803,390 @@ function ReportsPanel({
           )}
         </div>
       </section>
+
+      <DashboardPanel title="Pronunciation Dictionary">
+        <div
+          style={{
+            display: "grid",
+            gap: "14px",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: "13px",
+              lineHeight: 1.7,
+              color: "#475569",
+            }}
+          >
+            読み上げ直前に source を target へ置換します。保存後は次の発話から即反映されます。
+          </p>
+
+          <div
+            style={{
+              display: "grid",
+              gap: "10px",
+              padding: "14px",
+              borderRadius: "12px",
+              border: "1px solid #e5e7eb",
+              background: "#f8fafc",
+            }}
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "minmax(180px, 1fr) minmax(180px, 1fr) auto",
+                gap: "10px",
+                alignItems: "end",
+              }}
+            >
+              <label
+                style={{
+                  display: "grid",
+                  gap: "6px",
+                  fontSize: "12px",
+                  color: "#475569",
+                  fontWeight: 600,
+                }}
+              >
+                <span>source</span>
+                <input
+                  type="text"
+                  value={dictionarySourceInput}
+                  onChange={(event) => setDictionarySourceInput(event.target.value)}
+                  placeholder="DeepStream"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "10px",
+                    border: "1px solid #d1d5db",
+                    background: "#ffffff",
+                    color: "#111827",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </label>
+
+              <label
+                style={{
+                  display: "grid",
+                  gap: "6px",
+                  fontSize: "12px",
+                  color: "#475569",
+                  fontWeight: 600,
+                }}
+              >
+                <span>target</span>
+                <input
+                  type="text"
+                  value={dictionaryTargetInput}
+                  onChange={(event) => setDictionaryTargetInput(event.target.value)}
+                  placeholder="ディープストリーム"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "10px",
+                    border: "1px solid #d1d5db",
+                    background: "#ffffff",
+                    color: "#111827",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </label>
+
+              <button
+                type="button"
+                onClick={handleDictionaryAdd}
+                style={{
+                  height: "40px",
+                  padding: "0 14px",
+                  borderRadius: "10px",
+                  border: "1px solid #0ea5e9",
+                  background: "#e0f2fe",
+                  color: "#075985",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                add entry
+              </button>
+            </div>
+
+            {dictionaryError && (
+              <div
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: "10px",
+                  border: "1px solid #fecaca",
+                  background: "#fef2f2",
+                  color: "#b91c1c",
+                  fontSize: "12px",
+                  lineHeight: 1.6,
+                }}
+              >
+                {dictionaryError}
+              </div>
+            )}
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gap: "10px",
+              maxHeight: "320px",
+              overflowY: "auto",
+              paddingRight: "4px",
+            }}
+          >
+            {pronunciationDictionary.map((entry) => {
+              const entryKey = entry.source.toLowerCase();
+              const isEditing = editingDictionaryKey === entryKey;
+
+              return (
+                <div
+                  key={entryKey}
+                  style={{
+                    display: "grid",
+                    gap: "10px",
+                    padding: "12px 14px",
+                    borderRadius: "12px",
+                    border: "1px solid #e5e7eb",
+                    background: "#ffffff",
+                  }}
+                >
+                  {isEditing ? (
+                    <>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "minmax(180px, 1fr) minmax(180px, 1fr)",
+                          gap: "10px",
+                        }}
+                      >
+                        <label
+                          style={{
+                            display: "grid",
+                            gap: "6px",
+                            fontSize: "12px",
+                            color: "#475569",
+                            fontWeight: 600,
+                          }}
+                        >
+                          <span>source</span>
+                          <input
+                            type="text"
+                            value={editingDictionarySource}
+                            onChange={(event) =>
+                              setEditingDictionarySource(event.target.value)
+                            }
+                            style={{
+                              width: "100%",
+                              padding: "10px 12px",
+                              borderRadius: "10px",
+                              border: "1px solid #d1d5db",
+                              background: "#ffffff",
+                              color: "#111827",
+                              fontSize: "14px",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                        </label>
+
+                        <label
+                          style={{
+                            display: "grid",
+                            gap: "6px",
+                            fontSize: "12px",
+                            color: "#475569",
+                            fontWeight: 600,
+                          }}
+                        >
+                          <span>target</span>
+                          <input
+                            type="text"
+                            value={editingDictionaryTarget}
+                            onChange={(event) =>
+                              setEditingDictionaryTarget(event.target.value)
+                            }
+                            style={{
+                              width: "100%",
+                              padding: "10px 12px",
+                              borderRadius: "10px",
+                              border: "1px solid #d1d5db",
+                              background: "#ffffff",
+                              color: "#111827",
+                              fontSize: "14px",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                        </label>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          flexWrap: "wrap",
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={handleDictionaryEditSave}
+                          style={{
+                            height: "36px",
+                            padding: "0 12px",
+                            borderRadius: "10px",
+                            border: "1px solid #16a34a",
+                            background: "#f0fdf4",
+                            color: "#166534",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          save
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={cancelDictionaryEditing}
+                          style={{
+                            height: "36px",
+                            padding: "0 12px",
+                            borderRadius: "10px",
+                            border: "1px solid #d1d5db",
+                            background: "#ffffff",
+                            color: "#475569",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          cancel
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div
+                        style={{
+                          display: "grid",
+                          gap: "6px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            color: "#64748b",
+                            letterSpacing: "0.04em",
+                            textTransform: "uppercase",
+                            fontWeight: 700,
+                          }}
+                        >
+                          source
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "14px",
+                            color: "#111827",
+                            fontWeight: 600,
+                            lineHeight: 1.6,
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {entry.source}
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "grid",
+                          gap: "6px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            color: "#64748b",
+                            letterSpacing: "0.04em",
+                            textTransform: "uppercase",
+                            fontWeight: 700,
+                          }}
+                        >
+                          target
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "14px",
+                            color: "#0f172a",
+                            lineHeight: 1.6,
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {entry.target}
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          flexWrap: "wrap",
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleDictionaryEditStart(entry)}
+                          style={{
+                            height: "36px",
+                            padding: "0 12px",
+                            borderRadius: "10px",
+                            border: "1px solid #d1d5db",
+                            background: "#ffffff",
+                            color: "#475569",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          edit
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDictionaryRemove(entry)}
+                          style={{
+                            height: "36px",
+                            padding: "0 12px",
+                            borderRadius: "10px",
+                            border: "1px solid #fecaca",
+                            background: "#fff1f2",
+                            color: "#be123c",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          delete
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </DashboardPanel>
 
       <div
         style={{
