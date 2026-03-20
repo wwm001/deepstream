@@ -3,6 +3,8 @@ import type { ReportRecord, ReportStatus } from "../dashboardData/types";
 import DashboardPanel from "./DashboardPanel";
 import DashboardBadge from "./DashboardBadge";
 import DashboardActionButton from "./DashboardActionButton";
+import { readStorageJSON, writeStorageJSON } from "../utils/safeLocalStorage";
+import { DASHBOARD_STORAGE_NAMESPACE } from "../utils/dashboardState";
 
 type ReportsPanelProps = {
   items: ReportRecord[];
@@ -17,6 +19,30 @@ type ReportSegment = {
   kind: "title" | "summary" | "body";
   text: string;
 };
+
+type PronunciationEntry = {
+  source: string;
+  target: string;
+};
+
+const PRONUNCIATION_DICTIONARY_STORAGE_KEY =
+  "deepstream:report-pronunciation-dictionary";
+
+const defaultPronunciationDictionary: PronunciationEntry[] = [
+  { source: "Reports Queue", target: "レポートキュー" },
+  { source: "Report Reader", target: "レポートリーダー" },
+  { source: "DeepStream", target: "ディープストリーム" },
+  { source: "READ", target: "リード" },
+  { source: "Read", target: "リード" },
+  { source: "Queue", target: "キュー" },
+  { source: "reader", target: "リーダー" },
+  { source: "Reader", target: "リーダー" },
+  { source: "report", target: "レポート" },
+  { source: "Report", target: "レポート" },
+  { source: "MVP", target: "エムブイピー" },
+  { source: "TTS", target: "ティーティーエス" },
+  { source: "UI", target: "ユーアイ" },
+];
 
 const statusStyles: Record<
   ReportStatus,
@@ -68,6 +94,76 @@ function buildReportSegments(report: ReportRecord): ReportSegment[] {
   ];
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isValidPronunciationEntry(value: unknown): value is PronunciationEntry {
+  return (
+    isRecord(value) &&
+    typeof value.source === "string" &&
+    typeof value.target === "string"
+  );
+}
+
+function normalizePronunciationDictionary(
+  entries: PronunciationEntry[]
+): PronunciationEntry[] {
+  const seen = new Set<string>();
+
+  return entries
+    .map((entry) => ({
+      source: entry.source.trim(),
+      target: entry.target.trim(),
+    }))
+    .filter((entry) => entry.source.length > 0 && entry.target.length > 0)
+    .filter((entry) => {
+      const key = entry.source.toLowerCase();
+
+      if (seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => b.source.length - a.source.length);
+}
+
+function readStoredPronunciationDictionary() {
+  const parsed = readStorageJSON<unknown>(
+    PRONUNCIATION_DICTIONARY_STORAGE_KEY,
+    DASHBOARD_STORAGE_NAMESPACE,
+    defaultPronunciationDictionary
+  );
+
+  if (!Array.isArray(parsed)) {
+    return normalizePronunciationDictionary(defaultPronunciationDictionary);
+  }
+
+  const validEntries = parsed.filter(isValidPronunciationEntry);
+
+  if (validEntries.length === 0) {
+    return normalizePronunciationDictionary(defaultPronunciationDictionary);
+  }
+
+  return normalizePronunciationDictionary(validEntries);
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function applyPronunciationDictionary(
+  text: string,
+  dictionary: PronunciationEntry[]
+) {
+  return dictionary.reduce((currentText, entry) => {
+    const pattern = new RegExp(escapeRegExp(entry.source), "gi");
+    return currentText.replace(pattern, entry.target);
+  }, text);
+}
+
 function ReportsPanel({
   items,
   selectedReportId,
@@ -85,6 +181,9 @@ function ReportsPanel({
 
   const [reportFilter, setReportFilter] = useState<ReportFilter>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [pronunciationDictionary] = useState<PronunciationEntry[]>(() =>
+    readStoredPronunciationDictionary()
+  );
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const segmentQueueRef = useRef<ReportSegment[]>([]);
@@ -93,6 +192,14 @@ function ReportsPanel({
 
   const speechSupported =
     typeof window !== "undefined" && "speechSynthesis" in window;
+
+  useEffect(() => {
+    writeStorageJSON(
+      PRONUNCIATION_DICTIONARY_STORAGE_KEY,
+      pronunciationDictionary,
+      DASHBOARD_STORAGE_NAMESPACE
+    );
+  }, [pronunciationDictionary]);
 
   const filteredItems = useMemo(() => {
     const normalizedSearchTerm = searchTerm.trim().toLowerCase();
@@ -187,7 +294,9 @@ function ReportsPanel({
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(segment.text);
+    const utterance = new SpeechSynthesisUtterance(
+      applyPronunciationDictionary(segment.text, pronunciationDictionary)
+    );
     utterance.rate = playbackRate;
     utterance.lang = "ja-JP";
 
@@ -416,6 +525,17 @@ function ReportsPanel({
                   : "selected report ready"}
             </span>
           </div>
+
+          <p
+            style={{
+              margin: 0,
+              fontSize: "12px",
+              lineHeight: 1.6,
+              color: "#64748b",
+            }}
+          >
+            pronunciation dictionary active: {pronunciationDictionary.length} entries
+          </p>
         </div>
 
         <div
