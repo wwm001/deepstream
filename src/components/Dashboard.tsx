@@ -45,6 +45,8 @@ type DashboardProps = {
   onSelectSection: (section: NavigationSection) => void;
 };
 
+const REPORT_SELECTION_STORAGE_KEY = "deepstream:selected-report-id";
+
 function createActivityId() {
   return `activity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -112,6 +114,27 @@ function readStoredActivityItems(): HomeActivityItem[] {
   return validItems;
 }
 
+function readStoredSelectedReportId() {
+  const fallback = initialReportItems[0]?.id ?? null;
+
+  const parsed = readStorageJSON<string | null>(
+    REPORT_SELECTION_STORAGE_KEY,
+    DASHBOARD_STORAGE_NAMESPACE,
+    fallback
+  );
+
+  if (typeof parsed !== "string" && parsed !== null) {
+    return fallback;
+  }
+
+  if (parsed === null) {
+    return fallback;
+  }
+
+  const exists = initialReportItems.some((item) => item.id === parsed);
+  return exists ? parsed : fallback;
+}
+
 function Dashboard({
   currentSection,
   onSelectSection,
@@ -164,8 +187,8 @@ function Dashboard({
   );
 
   const [reportItems, setReportItems] = useState<ReportRecord[]>(initialReportItems);
-  const [selectedReportId, setSelectedReportId] = useState<string | null>(
-    initialReportItems[0]?.id ?? null
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(() =>
+    readStoredSelectedReportId()
   );
 
   const section = dashboardSections[currentSection];
@@ -190,6 +213,33 @@ function Dashboard({
       DASHBOARD_STORAGE_NAMESPACE
     );
   }, [activityItems]);
+
+  useEffect(() => {
+    writeStorageJSON(
+      REPORT_SELECTION_STORAGE_KEY,
+      selectedReportId,
+      DASHBOARD_STORAGE_NAMESPACE
+    );
+  }, [selectedReportId]);
+
+  useEffect(() => {
+    if (reportItems.length === 0) {
+      if (selectedReportId !== null) {
+        setSelectedReportId(null);
+      }
+      return;
+    }
+
+    if (!selectedReportId) {
+      setSelectedReportId(reportItems[0].id);
+      return;
+    }
+
+    const exists = reportItems.some((item) => item.id === selectedReportId);
+    if (!exists) {
+      setSelectedReportId(reportItems[0].id);
+    }
+  }, [reportItems, selectedReportId]);
 
   const {
     filteredSettingsChecks,
