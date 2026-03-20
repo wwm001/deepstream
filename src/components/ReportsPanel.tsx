@@ -32,7 +32,7 @@ const statusStyles: Record<
   },
 };
 
-const playbackRates = [0.8, 1.0, 1.2, 1.5] as const;
+const playbackRates = [0.8, 1.0, 1.2, 1.5, 2.0] as const;
 
 function buildSpeechText(report: ReportRecord) {
   return [report.title, report.summary, report.body].join("\n\n");
@@ -156,6 +156,22 @@ function ReportsPanel({
     }
   }, [selectedReport?.id, readingReportId, isReading]);
 
+  const readingStatusLabel = !speechSupported
+    ? "speech unavailable"
+    : isReading
+    ? isPaused
+      ? "paused"
+      : "speaking"
+    : "idle";
+
+  const readingStatusColor = !speechSupported
+    ? "#b45309"
+    : isReading
+    ? isPaused
+      ? "#b45309"
+      : "#047857"
+    : "#64748b";
+
   return (
     <div
       style={{
@@ -210,31 +226,58 @@ function ReportsPanel({
             選択中レポートの読み上げ操作をここから行います。
           </p>
 
-          <p
+          <div
             style={{
-              margin: 0,
-              minHeight: "18px",
-              fontSize: "12px",
-              lineHeight: 1.5,
-              color: !speechSupported
-                ? "#b45309"
-                : isReading && readingReportId === selectedReport?.id
-                ? isPaused
-                  ? "#b45309"
-                  : "#047857"
-                : "#64748b",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              flexWrap: "wrap",
+              minHeight: "22px",
             }}
           >
-            {!speechSupported
-              ? "このブラウザでは読み上げを利用できません"
-              : isReading && readingReportId === selectedReport?.id
-              ? isPaused
-                ? `paused at ${playbackRate.toFixed(1)}x`
-                : `reading aloud at ${playbackRate.toFixed(1)}x`
-              : selectedReport
-              ? `selected report: ${selectedReport.title}`
-              : "selected report ready"}
-          </p>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "4px 8px",
+                borderRadius: "999px",
+                border: `1px solid ${isReading ? "#bbf7d0" : "#e5e7eb"}`,
+                background: isReading ? "#f0fdf4" : "#f8fafc",
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                color: readingStatusColor,
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "999px",
+                  background: readingStatusColor,
+                }}
+              />
+              {readingStatusLabel}
+            </span>
+
+            <span
+              style={{
+                margin: 0,
+                fontSize: "12px",
+                lineHeight: 1.5,
+                color: "#64748b",
+              }}
+            >
+              {!speechSupported
+                ? "このブラウザでは読み上げを利用できません"
+                : selectedReport
+                ? `selected report: ${selectedReport.title}`
+                : "selected report ready"}
+            </span>
+          </div>
         </div>
 
         <div
@@ -330,6 +373,7 @@ function ReportsPanel({
           >
             {items.map((item) => {
               const isSelected = item.id === selectedReport?.id;
+              const isCurrentlyReading = item.id === readingReportId && isReading;
               const statusStyle = statusStyles[item.status];
 
               return (
@@ -339,14 +383,27 @@ function ReportsPanel({
                   onClick={() => onSelectReport(item.id)}
                   style={{
                     textAlign: "left",
-                    border: isSelected ? "1px solid #0891b2" : "1px solid #e5e7eb",
-                    background: isSelected ? "#ecfeff" : "#ffffff",
+                    border: isCurrentlyReading
+                      ? "2px solid #22c55e"
+                      : isSelected
+                      ? "1px solid #0891b2"
+                      : "1px solid #e5e7eb",
+                    background: isCurrentlyReading
+                      ? "#f0fdf4"
+                      : isSelected
+                      ? "#ecfeff"
+                      : "#ffffff",
                     borderRadius: "12px",
                     padding: "14px",
                     cursor: "pointer",
                     display: "grid",
                     gap: "10px",
                     minHeight: "148px",
+                    boxShadow: isCurrentlyReading
+                      ? "0 0 0 3px rgba(34, 197, 94, 0.12)"
+                      : "none",
+                    transition:
+                      "border-color 140ms ease, box-shadow 140ms ease, background 140ms ease",
                   }}
                 >
                   <div
@@ -386,11 +443,51 @@ function ReportsPanel({
                       </span>
                     </div>
 
-                    <DashboardBadge
-                      label={statusStyle.label}
-                      color={statusStyle.color}
-                      background={statusStyle.background}
-                    />
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        flexWrap: "wrap",
+                        justifyContent: "flex-end",
+                      }}
+                    >
+                      {isCurrentlyReading && (
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            padding: "4px 8px",
+                            borderRadius: "999px",
+                            background: isPaused ? "#fff7ed" : "#ecfdf5",
+                            border: `1px solid ${isPaused ? "#fdba74" : "#86efac"}`,
+                            color: isPaused ? "#b45309" : "#047857",
+                            fontSize: "10px",
+                            fontWeight: 700,
+                            letterSpacing: "0.05em",
+                            textTransform: "uppercase",
+                          }}
+                        >
+                          <span
+                            aria-hidden="true"
+                            style={{
+                              width: "8px",
+                              height: "8px",
+                              borderRadius: "999px",
+                              background: isPaused ? "#f59e0b" : "#22c55e",
+                            }}
+                          />
+                          {isPaused ? "paused" : "speaking"}
+                        </span>
+                      )}
+
+                      <DashboardBadge
+                        label={statusStyle.label}
+                        color={statusStyle.color}
+                        background={statusStyle.background}
+                      />
+                    </div>
                   </div>
 
                   <p
@@ -420,10 +517,68 @@ function ReportsPanel({
               style={{
                 display: "grid",
                 gap: "14px",
-                gridTemplateRows: "88px 88px auto",
+                gridTemplateRows: "auto 88px 88px auto",
                 alignItems: "start",
               }}
             >
+              <div
+                style={{
+                  minHeight: "42px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "10px",
+                  flexWrap: "wrap",
+                  padding: "10px 12px",
+                  borderRadius: "12px",
+                  border:
+                    isReading && readingReportId === selectedReport.id
+                      ? `1px solid ${isPaused ? "#fdba74" : "#86efac"}`
+                      : "1px solid #e5e7eb",
+                  background:
+                    isReading && readingReportId === selectedReport.id
+                      ? isPaused
+                        ? "#fff7ed"
+                        : "#f0fdf4"
+                      : "#f8fafc",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    letterSpacing: "0.05em",
+                    textTransform: "uppercase",
+                    color:
+                      isReading && readingReportId === selectedReport.id
+                        ? isPaused
+                          ? "#b45309"
+                          : "#047857"
+                        : "#64748b",
+                  }}
+                >
+                  {isReading && readingReportId === selectedReport.id
+                    ? isPaused
+                      ? "Reader paused"
+                      : "Reader speaking"
+                    : "Reader ready"}
+                </span>
+
+                <span
+                  style={{
+                    fontSize: "12px",
+                    color: "#64748b",
+                    lineHeight: 1.5,
+                  }}
+                >
+                  {isReading && readingReportId === selectedReport.id
+                    ? isPaused
+                      ? "現在のレポートを一時停止しています。"
+                      : "現在のレポートを読み上げ中です。"
+                    : "選択中レポートを表示しています。"}
+                </span>
+              </div>
+
               <section
                 style={{
                   minHeight: "88px",
