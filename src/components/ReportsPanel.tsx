@@ -11,6 +11,8 @@ type ReportsPanelProps = {
   onCycleReportStatus: (reportId: string) => void;
 };
 
+type ReportFilter = "all" | ReportStatus;
+
 const statusStyles: Record<
   ReportStatus,
   { color: string; background: string; label: string }
@@ -33,6 +35,7 @@ const statusStyles: Record<
 };
 
 const playbackRates = [0.8, 1.0, 1.2, 1.5, 2.0] as const;
+const reportFilters: ReportFilter[] = ["all", "new", "reading", "archived"];
 
 function buildSpeechText(report: ReportRecord) {
   return [report.title, report.summary, report.body].join("\n\n");
@@ -50,18 +53,57 @@ function ReportsPanel({
   const [isPaused, setIsPaused] = useState(false);
   const [readingReportId, setReadingReportId] = useState<string | null>(null);
 
+  const [reportFilter, setReportFilter] = useState<ReportFilter>("all");
+  const [searchTerm, setSearchTerm] = useState("");
+
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const speechSupported =
     typeof window !== "undefined" && "speechSynthesis" in window;
 
+  const filteredItems = useMemo(() => {
+    const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+
+    return items.filter((item) => {
+      const matchesFilter =
+        reportFilter === "all" ? true : item.status === reportFilter;
+
+      const matchesSearch =
+        normalizedSearchTerm.length === 0
+          ? true
+          : `${item.title} ${item.source} ${item.summary} ${item.body}`
+              .toLowerCase()
+              .includes(normalizedSearchTerm);
+
+      return matchesFilter && matchesSearch;
+    });
+  }, [items, reportFilter, searchTerm]);
+
   const selectedReport = useMemo(() => {
-    if (!selectedReportId) {
-      return items[0] ?? null;
+    if (filteredItems.length === 0) {
+      return null;
     }
 
-    return items.find((item) => item.id === selectedReportId) ?? items[0] ?? null;
-  }, [items, selectedReportId]);
+    if (!selectedReportId) {
+      return filteredItems[0] ?? null;
+    }
+
+    return (
+      filteredItems.find((item) => item.id === selectedReportId) ??
+      filteredItems[0] ??
+      null
+    );
+  }, [filteredItems, selectedReportId]);
+
+  const filterCounts = useMemo(
+    () => ({
+      all: items.length,
+      new: items.filter((item) => item.status === "new").length,
+      reading: items.filter((item) => item.status === "reading").length,
+      archived: items.filter((item) => item.status === "archived").length,
+    }),
+    [items]
+  );
 
   const stopReading = () => {
     if (!speechSupported) {
@@ -159,18 +201,18 @@ function ReportsPanel({
   const readingStatusLabel = !speechSupported
     ? "speech unavailable"
     : isReading
-    ? isPaused
-      ? "paused"
-      : "speaking"
-    : "idle";
+      ? isPaused
+        ? "paused"
+        : "speaking"
+      : "idle";
 
   const readingStatusColor = !speechSupported
     ? "#b45309"
     : isReading
-    ? isPaused
-      ? "#b45309"
-      : "#047857"
-    : "#64748b";
+      ? isPaused
+        ? "#b45309"
+        : "#047857"
+      : "#64748b";
 
   return (
     <div
@@ -274,8 +316,8 @@ function ReportsPanel({
               {!speechSupported
                 ? "このブラウザでは読み上げを利用できません"
                 : selectedReport
-                ? `selected report: ${selectedReport.title}`
-                : "selected report ready"}
+                  ? `selected report: ${selectedReport.title}`
+                  : "selected report ready"}
             </span>
           </div>
         </div>
@@ -369,146 +411,265 @@ function ReportsPanel({
             style={{
               display: "grid",
               gap: "12px",
+              marginBottom: "14px",
             }}
           >
-            {items.map((item) => {
-              const isSelected = item.id === selectedReport?.id;
-              const isCurrentlyReading = item.id === readingReportId && isReading;
-              const statusStyle = statusStyles[item.status];
+            <div
+              style={{
+                display: "grid",
+                gap: "10px",
+                padding: "14px",
+                borderRadius: "12px",
+                border: "1px solid #e5e7eb",
+                background: "#f9fafb",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  flexWrap: "wrap",
+                }}
+              >
+                {reportFilters.map((filter) => {
+                  const isActive = reportFilter === filter;
+                  const label = filter === "all" ? "all" : filter;
 
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onSelectReport(item.id)}
-                  style={{
-                    textAlign: "left",
-                    border: isCurrentlyReading
-                      ? "2px solid #22c55e"
-                      : isSelected
-                      ? "1px solid #0891b2"
-                      : "1px solid #e5e7eb",
-                    background: isCurrentlyReading
-                      ? "#f0fdf4"
-                      : isSelected
-                      ? "#ecfeff"
-                      : "#ffffff",
-                    borderRadius: "12px",
-                    padding: "14px",
-                    cursor: "pointer",
-                    display: "grid",
-                    gap: "10px",
-                    minHeight: "148px",
-                    boxShadow: isCurrentlyReading
-                      ? "0 0 0 3px rgba(34, 197, 94, 0.12)"
-                      : "none",
-                    transition:
-                      "border-color 140ms ease, box-shadow 140ms ease, background 140ms ease",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "start",
-                      gap: "10px",
-                      flexWrap: "wrap",
-                      minHeight: "44px",
-                    }}
-                  >
-                    <div
+                  return (
+                    <button
+                      key={filter}
+                      type="button"
+                      onClick={() => setReportFilter(filter)}
                       style={{
-                        display: "grid",
+                        display: "inline-flex",
+                        alignItems: "center",
                         gap: "6px",
-                        minHeight: "44px",
-                        alignContent: "start",
+                        padding: "7px 10px",
+                        borderRadius: "999px",
+                        border: isActive
+                          ? "1px solid #0891b2"
+                          : "1px solid #d1d5db",
+                        background: isActive ? "#ecfeff" : "#ffffff",
+                        color: isActive ? "#0f766e" : "#475569",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        cursor: "pointer",
                       }}
                     >
-                      <strong
-                        style={{
-                          fontSize: "14px",
-                          color: "#111827",
-                          lineHeight: 1.5,
-                        }}
-                      >
-                        {item.title}
-                      </strong>
+                      <span>{label}</span>
                       <span
                         style={{
-                          fontSize: "12px",
-                          color: "#6b7280",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          minWidth: "20px",
+                          height: "20px",
+                          padding: "0 6px",
+                          borderRadius: "999px",
+                          background: isActive ? "#ffffff" : "#f8fafc",
+                          border: "1px solid #e5e7eb",
+                          fontSize: "11px",
+                          color: "#64748b",
                         }}
                       >
-                        {item.source} ・ {item.createdAt}
+                        {filterCounts[filter]}
                       </span>
-                    </div>
+                    </button>
+                  );
+                })}
+              </div>
 
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="search reports"
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: "10px",
+                  border: "1px solid #d1d5db",
+                  background: "#ffffff",
+                  color: "#111827",
+                  fontSize: "14px",
+                  boxSizing: "border-box",
+                }}
+              />
+
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "12px",
+                  lineHeight: 1.6,
+                  color: "#64748b",
+                }}
+              >
+                {filteredItems.length} / {items.length} reports shown
+              </p>
+            </div>
+          </div>
+
+          {filteredItems.length > 0 ? (
+            <div
+              style={{
+                display: "grid",
+                gap: "12px",
+              }}
+            >
+              {filteredItems.map((item) => {
+                const isSelected = item.id === selectedReport?.id;
+                const isCurrentlyReading = item.id === readingReportId && isReading;
+                const statusStyle = statusStyles[item.status];
+
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => onSelectReport(item.id)}
+                    style={{
+                      textAlign: "left",
+                      border: isCurrentlyReading
+                        ? "2px solid #22c55e"
+                        : isSelected
+                          ? "1px solid #0891b2"
+                          : "1px solid #e5e7eb",
+                      background: isCurrentlyReading
+                        ? "#f0fdf4"
+                        : isSelected
+                          ? "#ecfeff"
+                          : "#ffffff",
+                      borderRadius: "12px",
+                      padding: "14px",
+                      cursor: "pointer",
+                      display: "grid",
+                      gap: "10px",
+                      minHeight: "148px",
+                      boxShadow: isCurrentlyReading
+                        ? "0 0 0 3px rgba(34, 197, 94, 0.12)"
+                        : "none",
+                      transition:
+                        "border-color 140ms ease, box-shadow 140ms ease, background 140ms ease",
+                    }}
+                  >
                     <div
                       style={{
                         display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
+                        justifyContent: "space-between",
+                        alignItems: "start",
+                        gap: "10px",
                         flexWrap: "wrap",
-                        justifyContent: "flex-end",
+                        minHeight: "44px",
                       }}
                     >
-                      {isCurrentlyReading && (
-                        <span
+                      <div
+                        style={{
+                          display: "grid",
+                          gap: "6px",
+                          minHeight: "44px",
+                          alignContent: "start",
+                        }}
+                      >
+                        <strong
                           style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "6px",
-                            padding: "4px 8px",
-                            borderRadius: "999px",
-                            background: isPaused ? "#fff7ed" : "#ecfdf5",
-                            border: `1px solid ${isPaused ? "#fdba74" : "#86efac"}`,
-                            color: isPaused ? "#b45309" : "#047857",
-                            fontSize: "10px",
-                            fontWeight: 700,
-                            letterSpacing: "0.05em",
-                            textTransform: "uppercase",
+                            fontSize: "14px",
+                            color: "#111827",
+                            lineHeight: 1.5,
                           }}
                         >
-                          <span
-                            aria-hidden="true"
-                            style={{
-                              width: "8px",
-                              height: "8px",
-                              borderRadius: "999px",
-                              background: isPaused ? "#f59e0b" : "#22c55e",
-                            }}
-                          />
-                          {isPaused ? "paused" : "speaking"}
+                          {item.title}
+                        </strong>
+                        <span
+                          style={{
+                            fontSize: "12px",
+                            color: "#6b7280",
+                          }}
+                        >
+                          {item.source} ・ {item.createdAt}
                         </span>
-                      )}
+                      </div>
 
-                      <DashboardBadge
-                        label={statusStyle.label}
-                        color={statusStyle.color}
-                        background={statusStyle.background}
-                      />
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          flexWrap: "wrap",
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        {isCurrentlyReading && (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              padding: "4px 8px",
+                              borderRadius: "999px",
+                              background: isPaused ? "#fff7ed" : "#ecfdf5",
+                              border: `1px solid ${isPaused ? "#fdba74" : "#86efac"}`,
+                              color: isPaused ? "#b45309" : "#047857",
+                              fontSize: "10px",
+                              fontWeight: 700,
+                              letterSpacing: "0.05em",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            <span
+                              aria-hidden="true"
+                              style={{
+                                width: "8px",
+                                height: "8px",
+                                borderRadius: "999px",
+                                background: isPaused ? "#f59e0b" : "#22c55e",
+                              }}
+                            />
+                            {isPaused ? "paused" : "speaking"}
+                          </span>
+                        )}
+
+                        <DashboardBadge
+                          label={statusStyle.label}
+                          color={statusStyle.color}
+                          background={statusStyle.background}
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: "13px",
-                      lineHeight: 1.7,
-                      color: "#4b5563",
-                      minHeight: "54px",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {item.summary}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: "13px",
+                        lineHeight: 1.7,
+                        color: "#4b5563",
+                        minHeight: "54px",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 3,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {item.summary}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div
+              style={{
+                padding: "18px 16px",
+                borderRadius: "12px",
+                border: "1px solid #e5e7eb",
+                background: "#ffffff",
+                fontSize: "14px",
+                lineHeight: 1.8,
+                color: "#6b7280",
+              }}
+            >
+              条件に一致するレポートがありません。
+            </div>
+          )}
         </DashboardPanel>
 
         <DashboardPanel title="Report Reader">
