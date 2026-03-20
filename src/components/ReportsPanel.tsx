@@ -27,7 +27,12 @@ type PronunciationEntry = {
 
 type ReaderLanguage = "ja" | "en";
 
+const playbackRates = [0.8, 1.0, 1.2, 1.5, 2.0] as const;
+const reportFilters: ReportFilter[] = ["all", "new", "reading", "archived"];
+
+type ReaderPlaybackRate = (typeof playbackRates)[number];
 type VoiceSelectionsByLanguage = Record<ReaderLanguage, string>;
+type PlaybackRatesByLanguage = Record<ReaderLanguage, ReaderPlaybackRate>;
 type PronunciationDictionaryByLanguage = Record<
   ReaderLanguage,
   PronunciationEntry[]
@@ -39,6 +44,8 @@ const REPORT_READER_LANGUAGE_STORAGE_KEY =
   "deepstream:report-reader-language";
 const REPORT_READER_VOICE_SELECTIONS_STORAGE_KEY =
   "deepstream:report-reader-voice-selections";
+const REPORT_READER_PLAYBACK_RATES_STORAGE_KEY =
+  "deepstream:report-reader-playback-rates";
 
 const defaultPronunciationDictionaries: PronunciationDictionaryByLanguage = {
   ja: [
@@ -62,6 +69,11 @@ const defaultPronunciationDictionaries: PronunciationDictionaryByLanguage = {
 const defaultVoiceSelections: VoiceSelectionsByLanguage = {
   ja: "",
   en: "",
+};
+
+const defaultPlaybackRatesByLanguage: PlaybackRatesByLanguage = {
+  ja: 1.0,
+  en: 1.0,
 };
 
 const readerLanguageOptions: Array<{
@@ -101,9 +113,6 @@ const statusStyles: Record<
     label: "archived",
   },
 };
-
-const playbackRates = [0.8, 1.0, 1.2, 1.5, 2.0] as const;
-const reportFilters: ReportFilter[] = ["all", "new", "reading", "archived"];
 
 function splitBodyParagraphs(body: string) {
   return body
@@ -145,6 +154,13 @@ function isValidPronunciationEntry(value: unknown): value is PronunciationEntry 
 
 function isReaderLanguage(value: unknown): value is ReaderLanguage {
   return value === "ja" || value === "en";
+}
+
+function isValidPlaybackRate(value: unknown): value is ReaderPlaybackRate {
+  return (
+    typeof value === "number" &&
+    playbackRates.includes(value as ReaderPlaybackRate)
+  );
 }
 
 function normalizePronunciationDictionary(
@@ -255,6 +271,34 @@ function readStoredVoiceSelections(): VoiceSelectionsByLanguage {
   };
 }
 
+function readStoredPlaybackRates(): PlaybackRatesByLanguage {
+  const parsed = readStorageJSON<unknown>(
+    REPORT_READER_PLAYBACK_RATES_STORAGE_KEY,
+    DASHBOARD_STORAGE_NAMESPACE,
+    defaultPlaybackRatesByLanguage
+  );
+
+  if (typeof parsed === "number" && isValidPlaybackRate(parsed)) {
+    return {
+      ja: parsed,
+      en: defaultPlaybackRatesByLanguage.en,
+    };
+  }
+
+  if (!isRecord(parsed)) {
+    return defaultPlaybackRatesByLanguage;
+  }
+
+  return {
+    ja: isValidPlaybackRate(parsed.ja)
+      ? parsed.ja
+      : defaultPlaybackRatesByLanguage.ja,
+    en: isValidPlaybackRate(parsed.en)
+      ? parsed.en
+      : defaultPlaybackRatesByLanguage.en,
+  };
+}
+
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -339,8 +383,8 @@ function ReportsPanel({
   onSelectReport,
   onCycleReportStatus,
 }: ReportsPanelProps) {
-  const [playbackRate, setPlaybackRate] =
-    useState<(typeof playbackRates)[number]>(1.0);
+  const [selectedPlaybackRates, setSelectedPlaybackRates] =
+    useState<PlaybackRatesByLanguage>(() => readStoredPlaybackRates());
   const [isReading, setIsReading] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [readingReportId, setReadingReportId] = useState<string | null>(null);
@@ -382,10 +426,14 @@ function ReportsPanel({
   const selectedReaderLanguageRef = useRef<ReaderLanguage>(
     selectedReaderLanguage
   );
-  const playbackRateRef = useRef<(typeof playbackRates)[number]>(playbackRate);
+  const playbackRateRef = useRef<ReaderPlaybackRate>(
+    selectedPlaybackRates[selectedReaderLanguage]
+  );
 
   const speechSupported =
     typeof window !== "undefined" && "speechSynthesis" in window;
+
+  const playbackRate = selectedPlaybackRates[selectedReaderLanguage];
 
   const filteredVoices = useMemo(() => {
     return availableVoices.filter((voice) =>
@@ -431,6 +479,14 @@ function ReportsPanel({
       DASHBOARD_STORAGE_NAMESPACE
     );
   }, [selectedVoiceSelections]);
+
+  useEffect(() => {
+    writeStorageJSON(
+      REPORT_READER_PLAYBACK_RATES_STORAGE_KEY,
+      selectedPlaybackRates,
+      DASHBOARD_STORAGE_NAMESPACE
+    );
+  }, [selectedPlaybackRates]);
 
   useEffect(() => {
     selectedVoiceRef.current = selectedVoice;
@@ -550,6 +606,13 @@ function ReportsPanel({
     setSelectedVoiceSelections((currentSelections) => ({
       ...currentSelections,
       [selectedReaderLanguage]: voiceURI,
+    }));
+  };
+
+  const handlePlaybackRateChange = (nextRate: ReaderPlaybackRate) => {
+    setSelectedPlaybackRates((currentRates) => ({
+      ...currentRates,
+      [selectedReaderLanguage]: nextRate,
     }));
   };
 
@@ -1034,6 +1097,17 @@ function ReportsPanel({
           >
             voice: {voiceStatusLabel}
           </p>
+
+          <p
+            style={{
+              margin: 0,
+              fontSize: "12px",
+              lineHeight: 1.6,
+              color: "#64748b",
+            }}
+          >
+            speed: {playbackRate.toFixed(1)}x for {currentLanguageLabel}
+          </p>
         </div>
 
         <div
@@ -1066,8 +1140,8 @@ function ReportsPanel({
             <select
               value={playbackRate}
               onChange={(event) =>
-                setPlaybackRate(
-                  Number(event.target.value) as (typeof playbackRates)[number]
+                handlePlaybackRateChange(
+                  Number(event.target.value) as ReaderPlaybackRate
                 )
               }
               style={{
