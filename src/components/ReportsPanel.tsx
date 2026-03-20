@@ -25,9 +25,16 @@ type PronunciationEntry = {
   target: string;
 };
 
+type ReaderLanguage = "ja" | "en";
+
+type VoiceSelectionsByLanguage = Record<ReaderLanguage, string>;
+
 const PRONUNCIATION_DICTIONARY_STORAGE_KEY =
   "deepstream:report-pronunciation-dictionary";
-const REPORT_READER_VOICE_STORAGE_KEY = "deepstream:report-reader-voice-uri";
+const REPORT_READER_LANGUAGE_STORAGE_KEY =
+  "deepstream:report-reader-language";
+const REPORT_READER_VOICE_SELECTIONS_STORAGE_KEY =
+  "deepstream:report-reader-voice-selections";
 
 const defaultPronunciationDictionary: PronunciationEntry[] = [
   { source: "Reports Queue", target: "レポートキュー" },
@@ -43,6 +50,28 @@ const defaultPronunciationDictionary: PronunciationEntry[] = [
   { source: "MVP", target: "エムブイピー" },
   { source: "TTS", target: "ティーティーエス" },
   { source: "UI", target: "ユーアイ" },
+];
+
+const defaultVoiceSelections: VoiceSelectionsByLanguage = {
+  ja: "",
+  en: "",
+};
+
+const readerLanguageOptions: Array<{
+  value: ReaderLanguage;
+  label: string;
+  fallbackUtteranceLang: string;
+}> = [
+  {
+    value: "ja",
+    label: "日本語",
+    fallbackUtteranceLang: "ja-JP",
+  },
+  {
+    value: "en",
+    label: "English",
+    fallbackUtteranceLang: "en-US",
+  },
 ];
 
 const statusStyles: Record<
@@ -107,6 +136,10 @@ function isValidPronunciationEntry(value: unknown): value is PronunciationEntry 
   );
 }
 
+function isReaderLanguage(value: unknown): value is ReaderLanguage {
+  return value === "ja" || value === "en";
+}
+
 function normalizePronunciationDictionary(
   entries: PronunciationEntry[]
 ): PronunciationEntry[] {
@@ -155,14 +188,31 @@ function readStoredPronunciationDictionary() {
   return normalizePronunciationDictionary(validEntries);
 }
 
-function readStoredVoiceURI() {
+function readStoredReaderLanguage() {
   const parsed = readStorageJSON<unknown>(
-    REPORT_READER_VOICE_STORAGE_KEY,
+    REPORT_READER_LANGUAGE_STORAGE_KEY,
     DASHBOARD_STORAGE_NAMESPACE,
-    ""
+    "ja"
   );
 
-  return typeof parsed === "string" ? parsed : "";
+  return isReaderLanguage(parsed) ? parsed : "ja";
+}
+
+function readStoredVoiceSelections(): VoiceSelectionsByLanguage {
+  const parsed = readStorageJSON<unknown>(
+    REPORT_READER_VOICE_SELECTIONS_STORAGE_KEY,
+    DASHBOARD_STORAGE_NAMESPACE,
+    defaultVoiceSelections
+  );
+
+  if (!isRecord(parsed)) {
+    return defaultVoiceSelections;
+  }
+
+  return {
+    ja: typeof parsed.ja === "string" ? parsed.ja : "",
+    en: typeof parsed.en === "string" ? parsed.en : "",
+  };
 }
 
 function escapeRegExp(value: string) {
@@ -202,6 +252,13 @@ function sortVoices(voices: SpeechSynthesisVoice[]) {
       return leftIsJapanese ? -1 : 1;
     }
 
+    const leftIsEnglish = left.lang.toLowerCase().startsWith("en");
+    const rightIsEnglish = right.lang.toLowerCase().startsWith("en");
+
+    if (leftIsEnglish !== rightIsEnglish) {
+      return leftIsEnglish ? -1 : 1;
+    }
+
     if (left.localService !== right.localService) {
       return left.localService ? -1 : 1;
     }
@@ -214,6 +271,26 @@ function sortVoices(voices: SpeechSynthesisVoice[]) {
       sensitivity: "base",
     });
   });
+}
+
+function voiceMatchesLanguage(
+  voice: SpeechSynthesisVoice,
+  language: ReaderLanguage
+) {
+  const normalizedLang = voice.lang.toLowerCase();
+
+  if (language === "ja") {
+    return normalizedLang.startsWith("ja");
+  }
+
+  return normalizedLang.startsWith("en");
+}
+
+function getFallbackUtteranceLang(language: ReaderLanguage) {
+  return (
+    readerLanguageOptions.find((option) => option.value === language)
+      ?.fallbackUtteranceLang ?? "ja-JP"
+  );
 }
 
 function ReportsPanel({
@@ -248,9 +325,10 @@ function ReportsPanel({
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>(
     []
   );
-  const [selectedVoiceURI, setSelectedVoiceURI] = useState<string>(() =>
-    readStoredVoiceURI()
-  );
+  const [selectedReaderLanguage, setSelectedReaderLanguage] =
+    useState<ReaderLanguage>(() => readStoredReaderLanguage());
+  const [selectedVoiceSelections, setSelectedVoiceSelections] =
+    useState<VoiceSelectionsByLanguage>(() => readStoredVoiceSelections());
 
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const segmentQueueRef = useRef<ReportSegment[]>([]);
@@ -260,16 +338,27 @@ function ReportsPanel({
     pronunciationDictionary
   );
   const selectedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  const selectedReaderLanguageRef = useRef<ReaderLanguage>(
+    selectedReaderLanguage
+  );
+  const playbackRateRef = useRef<(typeof playbackRates)[number]>(playbackRate);
 
   const speechSupported =
     typeof window !== "undefined" && "speechSynthesis" in window;
 
+  const filteredVoices = useMemo(() => {
+    return availableVoices.filter((voice) =>
+      voiceMatchesLanguage(voice, selectedReaderLanguage)
+    );
+  }, [availableVoices, selectedReaderLanguage]);
+
+  const selectedVoiceURI = selectedVoiceSelections[selectedReaderLanguage];
+
   const selectedVoice = useMemo(() => {
     return (
-      availableVoices.find((voice) => voice.voiceURI === selectedVoiceURI) ??
-      null
+      filteredVoices.find((voice) => voice.voiceURI === selectedVoiceURI) ?? null
     );
-  }, [availableVoices, selectedVoiceURI]);
+  }, [filteredVoices, selectedVoiceURI]);
 
   useEffect(() => {
     pronunciationDictionaryRef.current = pronunciationDictionary;
@@ -283,15 +372,28 @@ function ReportsPanel({
 
   useEffect(() => {
     writeStorageJSON(
-      REPORT_READER_VOICE_STORAGE_KEY,
-      selectedVoiceURI,
+      REPORT_READER_LANGUAGE_STORAGE_KEY,
+      selectedReaderLanguage,
       DASHBOARD_STORAGE_NAMESPACE
     );
-  }, [selectedVoiceURI]);
+    selectedReaderLanguageRef.current = selectedReaderLanguage;
+  }, [selectedReaderLanguage]);
+
+  useEffect(() => {
+    writeStorageJSON(
+      REPORT_READER_VOICE_SELECTIONS_STORAGE_KEY,
+      selectedVoiceSelections,
+      DASHBOARD_STORAGE_NAMESPACE
+    );
+  }, [selectedVoiceSelections]);
 
   useEffect(() => {
     selectedVoiceRef.current = selectedVoice;
   }, [selectedVoice]);
+
+  useEffect(() => {
+    playbackRateRef.current = playbackRate;
+  }, [playbackRate]);
 
   useEffect(() => {
     if (!speechSupported) {
@@ -494,6 +596,13 @@ function ReportsPanel({
     setDictionaryError(null);
   };
 
+  const handleVoiceSelectionChange = (voiceURI: string) => {
+    setSelectedVoiceSelections((currentSelections) => ({
+      ...currentSelections,
+      [selectedReaderLanguage]: voiceURI,
+    }));
+  };
+
   const finishReading = (sessionId?: number) => {
     if (
       typeof sessionId === "number" &&
@@ -541,9 +650,10 @@ function ReportsPanel({
     );
 
     const activeVoice = selectedVoiceRef.current;
+    const activeLanguage = selectedReaderLanguageRef.current;
 
-    utterance.rate = playbackRate;
-    utterance.lang = activeVoice?.lang || "ja-JP";
+    utterance.rate = playbackRateRef.current;
+    utterance.lang = activeVoice?.lang || getFallbackUtteranceLang(activeLanguage);
 
     if (activeVoice) {
       utterance.voice = activeVoice;
@@ -714,15 +824,20 @@ function ReportsPanel({
     currentSegmentIndex != null &&
     currentSegmentIndex < selectedSegments.length - 1;
 
+  const currentLanguageLabel =
+    readerLanguageOptions.find(
+      (option) => option.value === selectedReaderLanguage
+    )?.label ?? "日本語";
+
   const voiceStatusLabel = !speechSupported
     ? "speech unavailable"
-    : availableVoices.length === 0
-      ? "loading voices..."
+    : filteredVoices.length === 0
+      ? `${currentLanguageLabel} の voice が見つかりません`
       : selectedVoice
         ? formatVoiceLabel(selectedVoice)
         : selectedVoiceURI
           ? "stored voice unavailable"
-          : "default system voice";
+          : `default ${currentLanguageLabel} voice`;
 
   return (
     <div
@@ -852,6 +967,18 @@ function ReportsPanel({
               wordBreak: "break-word",
             }}
           >
+            language: {currentLanguageLabel}
+          </p>
+
+          <p
+            style={{
+              margin: 0,
+              fontSize: "12px",
+              lineHeight: 1.6,
+              color: "#64748b",
+              wordBreak: "break-word",
+            }}
+          >
             voice: {voiceStatusLabel}
           </p>
         </div>
@@ -861,7 +988,7 @@ function ReportsPanel({
             display: "grid",
             gap: "8px",
             marginLeft: "auto",
-            minWidth: "280px",
+            minWidth: "300px",
             maxWidth: "100%",
           }}
         >
@@ -913,12 +1040,14 @@ function ReportsPanel({
                 fontWeight: 600,
               }}
             >
-              voice
+              language
             </label>
 
             <select
-              value={selectedVoiceURI}
-              onChange={(event) => setSelectedVoiceURI(event.target.value)}
+              value={selectedReaderLanguage}
+              onChange={(event) =>
+                setSelectedReaderLanguage(event.target.value as ReaderLanguage)
+              }
               disabled={!speechSupported}
               style={{
                 padding: "8px 10px",
@@ -929,14 +1058,60 @@ function ReportsPanel({
                 fontSize: "13px",
               }}
             >
-              <option value="">default system voice</option>
-              {availableVoices.map((voice) => (
+              {readerLanguageOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            <label
+              style={{
+                fontSize: "12px",
+                color: "#475569",
+                fontWeight: 600,
+              }}
+            >
+              voice
+            </label>
+
+            <select
+              value={selectedVoice ? selectedVoice.voiceURI : ""}
+              onChange={(event) => handleVoiceSelectionChange(event.target.value)}
+              disabled={!speechSupported}
+              style={{
+                padding: "8px 10px",
+                borderRadius: "10px",
+                border: "1px solid #d1d5db",
+                background: speechSupported ? "#ffffff" : "#f8fafc",
+                color: "#111827",
+                fontSize: "13px",
+              }}
+            >
+              <option value="">
+                {filteredVoices.length === 0
+                  ? `no ${currentLanguageLabel} voice available`
+                  : `default ${currentLanguageLabel} voice`}
+              </option>
+              {filteredVoices.map((voice) => (
                 <option key={voice.voiceURI} value={voice.voiceURI}>
                   {formatVoiceLabel(voice)}
                 </option>
               ))}
             </select>
           </div>
+
+          <p
+            style={{
+              margin: 0,
+              fontSize: "12px",
+              lineHeight: 1.6,
+              color: "#64748b",
+            }}
+          >
+            voice options: {filteredVoices.length} available for{" "}
+            {currentLanguageLabel}
+          </p>
 
           <div
             style={{
@@ -986,390 +1161,6 @@ function ReportsPanel({
           </div>
         </div>
       </section>
-
-      <DashboardPanel title="Pronunciation Dictionary">
-        <div
-          style={{
-            display: "grid",
-            gap: "14px",
-          }}
-        >
-          <p
-            style={{
-              margin: 0,
-              fontSize: "13px",
-              lineHeight: 1.7,
-              color: "#475569",
-            }}
-          >
-            読み上げ直前に source を target へ置換します。保存後は次の発話から即反映されます。
-          </p>
-
-          <div
-            style={{
-              display: "grid",
-              gap: "10px",
-              padding: "14px",
-              borderRadius: "12px",
-              border: "1px solid #e5e7eb",
-              background: "#f8fafc",
-            }}
-          >
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns:
-                  "minmax(180px, 1fr) minmax(180px, 1fr) auto",
-                gap: "10px",
-                alignItems: "end",
-              }}
-            >
-              <label
-                style={{
-                  display: "grid",
-                  gap: "6px",
-                  fontSize: "12px",
-                  color: "#475569",
-                  fontWeight: 600,
-                }}
-              >
-                <span>source</span>
-                <input
-                  type="text"
-                  value={dictionarySourceInput}
-                  onChange={(event) => setDictionarySourceInput(event.target.value)}
-                  placeholder="DeepStream"
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: "10px",
-                    border: "1px solid #d1d5db",
-                    background: "#ffffff",
-                    color: "#111827",
-                    fontSize: "14px",
-                    boxSizing: "border-box",
-                  }}
-                />
-              </label>
-
-              <label
-                style={{
-                  display: "grid",
-                  gap: "6px",
-                  fontSize: "12px",
-                  color: "#475569",
-                  fontWeight: 600,
-                }}
-              >
-                <span>target</span>
-                <input
-                  type="text"
-                  value={dictionaryTargetInput}
-                  onChange={(event) => setDictionaryTargetInput(event.target.value)}
-                  placeholder="ディープストリーム"
-                  style={{
-                    width: "100%",
-                    padding: "10px 12px",
-                    borderRadius: "10px",
-                    border: "1px solid #d1d5db",
-                    background: "#ffffff",
-                    color: "#111827",
-                    fontSize: "14px",
-                    boxSizing: "border-box",
-                  }}
-                />
-              </label>
-
-              <button
-                type="button"
-                onClick={handleDictionaryAdd}
-                style={{
-                  height: "40px",
-                  padding: "0 14px",
-                  borderRadius: "10px",
-                  border: "1px solid #0ea5e9",
-                  background: "#e0f2fe",
-                  color: "#075985",
-                  fontSize: "13px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                }}
-              >
-                add entry
-              </button>
-            </div>
-
-            {dictionaryError && (
-              <div
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: "10px",
-                  border: "1px solid #fecaca",
-                  background: "#fef2f2",
-                  color: "#b91c1c",
-                  fontSize: "12px",
-                  lineHeight: 1.6,
-                }}
-              >
-                {dictionaryError}
-              </div>
-            )}
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gap: "10px",
-              maxHeight: "320px",
-              overflowY: "auto",
-              paddingRight: "4px",
-            }}
-          >
-            {pronunciationDictionary.map((entry) => {
-              const entryKey = entry.source.toLowerCase();
-              const isEditing = editingDictionaryKey === entryKey;
-
-              return (
-                <div
-                  key={entryKey}
-                  style={{
-                    display: "grid",
-                    gap: "10px",
-                    padding: "12px 14px",
-                    borderRadius: "12px",
-                    border: "1px solid #e5e7eb",
-                    background: "#ffffff",
-                  }}
-                >
-                  {isEditing ? (
-                    <>
-                      <div
-                        style={{
-                          display: "grid",
-                          gridTemplateColumns:
-                            "minmax(180px, 1fr) minmax(180px, 1fr)",
-                          gap: "10px",
-                        }}
-                      >
-                        <label
-                          style={{
-                            display: "grid",
-                            gap: "6px",
-                            fontSize: "12px",
-                            color: "#475569",
-                            fontWeight: 600,
-                          }}
-                        >
-                          <span>source</span>
-                          <input
-                            type="text"
-                            value={editingDictionarySource}
-                            onChange={(event) =>
-                              setEditingDictionarySource(event.target.value)
-                            }
-                            style={{
-                              width: "100%",
-                              padding: "10px 12px",
-                              borderRadius: "10px",
-                              border: "1px solid #d1d5db",
-                              background: "#ffffff",
-                              color: "#111827",
-                              fontSize: "14px",
-                              boxSizing: "border-box",
-                            }}
-                          />
-                        </label>
-
-                        <label
-                          style={{
-                            display: "grid",
-                            gap: "6px",
-                            fontSize: "12px",
-                            color: "#475569",
-                            fontWeight: 600,
-                          }}
-                        >
-                          <span>target</span>
-                          <input
-                            type="text"
-                            value={editingDictionaryTarget}
-                            onChange={(event) =>
-                              setEditingDictionaryTarget(event.target.value)
-                            }
-                            style={{
-                              width: "100%",
-                              padding: "10px 12px",
-                              borderRadius: "10px",
-                              border: "1px solid #d1d5db",
-                              background: "#ffffff",
-                              color: "#111827",
-                              fontSize: "14px",
-                              boxSizing: "border-box",
-                            }}
-                          />
-                        </label>
-                      </div>
-
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          flexWrap: "wrap",
-                          justifyContent: "flex-end",
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={handleDictionaryEditSave}
-                          style={{
-                            height: "36px",
-                            padding: "0 12px",
-                            borderRadius: "10px",
-                            border: "1px solid #16a34a",
-                            background: "#f0fdf4",
-                            color: "#166534",
-                            fontSize: "12px",
-                            fontWeight: 700,
-                            cursor: "pointer",
-                          }}
-                        >
-                          save
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={cancelDictionaryEditing}
-                          style={{
-                            height: "36px",
-                            padding: "0 12px",
-                            borderRadius: "10px",
-                            border: "1px solid #d1d5db",
-                            background: "#ffffff",
-                            color: "#475569",
-                            fontSize: "12px",
-                            fontWeight: 700,
-                            cursor: "pointer",
-                          }}
-                        >
-                          cancel
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div
-                        style={{
-                          display: "grid",
-                          gap: "6px",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: "12px",
-                            color: "#64748b",
-                            letterSpacing: "0.04em",
-                            textTransform: "uppercase",
-                            fontWeight: 700,
-                          }}
-                        >
-                          source
-                        </div>
-                        <div
-                          style={{
-                            fontSize: "14px",
-                            color: "#111827",
-                            fontWeight: 600,
-                            lineHeight: 1.6,
-                            wordBreak: "break-word",
-                          }}
-                        >
-                          {entry.source}
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          display: "grid",
-                          gap: "6px",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: "12px",
-                            color: "#64748b",
-                            letterSpacing: "0.04em",
-                            textTransform: "uppercase",
-                            fontWeight: 700,
-                          }}
-                        >
-                          target
-                        </div>
-                        <div
-                          style={{
-                            fontSize: "14px",
-                            color: "#0f172a",
-                            lineHeight: 1.6,
-                            wordBreak: "break-word",
-                          }}
-                        >
-                          {entry.target}
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          flexWrap: "wrap",
-                          justifyContent: "flex-end",
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleDictionaryEditStart(entry)}
-                          style={{
-                            height: "36px",
-                            padding: "0 12px",
-                            borderRadius: "10px",
-                            border: "1px solid #d1d5db",
-                            background: "#ffffff",
-                            color: "#475569",
-                            fontSize: "12px",
-                            fontWeight: 700,
-                            cursor: "pointer",
-                          }}
-                        >
-                          edit
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDictionaryRemove(entry)}
-                          style={{
-                            height: "36px",
-                            padding: "0 12px",
-                            borderRadius: "10px",
-                            border: "1px solid #fecaca",
-                            background: "#fff1f2",
-                            color: "#be123c",
-                            fontSize: "12px",
-                            fontWeight: 700,
-                            cursor: "pointer",
-                          }}
-                        >
-                          delete
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </DashboardPanel>
 
       <div
         style={{
@@ -1902,6 +1693,390 @@ function ReportsPanel({
           )}
         </DashboardPanel>
       </div>
+
+      <DashboardPanel title="Pronunciation Dictionary">
+        <div
+          style={{
+            display: "grid",
+            gap: "14px",
+          }}
+        >
+          <p
+            style={{
+              margin: 0,
+              fontSize: "13px",
+              lineHeight: 1.7,
+              color: "#475569",
+            }}
+          >
+            読み上げ直前に source を target へ置換します。保存後は次の発話から即反映されます。
+          </p>
+
+          <div
+            style={{
+              display: "grid",
+              gap: "10px",
+              padding: "14px",
+              borderRadius: "12px",
+              border: "1px solid #e5e7eb",
+              background: "#f8fafc",
+            }}
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "minmax(180px, 1fr) minmax(180px, 1fr) auto",
+                gap: "10px",
+                alignItems: "end",
+              }}
+            >
+              <label
+                style={{
+                  display: "grid",
+                  gap: "6px",
+                  fontSize: "12px",
+                  color: "#475569",
+                  fontWeight: 600,
+                }}
+              >
+                <span>source</span>
+                <input
+                  type="text"
+                  value={dictionarySourceInput}
+                  onChange={(event) => setDictionarySourceInput(event.target.value)}
+                  placeholder="DeepStream"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "10px",
+                    border: "1px solid #d1d5db",
+                    background: "#ffffff",
+                    color: "#111827",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </label>
+
+              <label
+                style={{
+                  display: "grid",
+                  gap: "6px",
+                  fontSize: "12px",
+                  color: "#475569",
+                  fontWeight: 600,
+                }}
+              >
+                <span>target</span>
+                <input
+                  type="text"
+                  value={dictionaryTargetInput}
+                  onChange={(event) => setDictionaryTargetInput(event.target.value)}
+                  placeholder="ディープストリーム"
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: "10px",
+                    border: "1px solid #d1d5db",
+                    background: "#ffffff",
+                    color: "#111827",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </label>
+
+              <button
+                type="button"
+                onClick={handleDictionaryAdd}
+                style={{
+                  height: "40px",
+                  padding: "0 14px",
+                  borderRadius: "10px",
+                  border: "1px solid #0ea5e9",
+                  background: "#e0f2fe",
+                  color: "#075985",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                add entry
+              </button>
+            </div>
+
+            {dictionaryError && (
+              <div
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: "10px",
+                  border: "1px solid #fecaca",
+                  background: "#fef2f2",
+                  color: "#b91c1c",
+                  fontSize: "12px",
+                  lineHeight: 1.6,
+                }}
+              >
+                {dictionaryError}
+              </div>
+            )}
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gap: "10px",
+              maxHeight: "320px",
+              overflowY: "auto",
+              paddingRight: "4px",
+            }}
+          >
+            {pronunciationDictionary.map((entry) => {
+              const entryKey = entry.source.toLowerCase();
+              const isEditing = editingDictionaryKey === entryKey;
+
+              return (
+                <div
+                  key={entryKey}
+                  style={{
+                    display: "grid",
+                    gap: "10px",
+                    padding: "12px 14px",
+                    borderRadius: "12px",
+                    border: "1px solid #e5e7eb",
+                    background: "#ffffff",
+                  }}
+                >
+                  {isEditing ? (
+                    <>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "minmax(180px, 1fr) minmax(180px, 1fr)",
+                          gap: "10px",
+                        }}
+                      >
+                        <label
+                          style={{
+                            display: "grid",
+                            gap: "6px",
+                            fontSize: "12px",
+                            color: "#475569",
+                            fontWeight: 600,
+                          }}
+                        >
+                          <span>source</span>
+                          <input
+                            type="text"
+                            value={editingDictionarySource}
+                            onChange={(event) =>
+                              setEditingDictionarySource(event.target.value)
+                            }
+                            style={{
+                              width: "100%",
+                              padding: "10px 12px",
+                              borderRadius: "10px",
+                              border: "1px solid #d1d5db",
+                              background: "#ffffff",
+                              color: "#111827",
+                              fontSize: "14px",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                        </label>
+
+                        <label
+                          style={{
+                            display: "grid",
+                            gap: "6px",
+                            fontSize: "12px",
+                            color: "#475569",
+                            fontWeight: 600,
+                          }}
+                        >
+                          <span>target</span>
+                          <input
+                            type="text"
+                            value={editingDictionaryTarget}
+                            onChange={(event) =>
+                              setEditingDictionaryTarget(event.target.value)
+                            }
+                            style={{
+                              width: "100%",
+                              padding: "10px 12px",
+                              borderRadius: "10px",
+                              border: "1px solid #d1d5db",
+                              background: "#ffffff",
+                              color: "#111827",
+                              fontSize: "14px",
+                              boxSizing: "border-box",
+                            }}
+                          />
+                        </label>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          flexWrap: "wrap",
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={handleDictionaryEditSave}
+                          style={{
+                            height: "36px",
+                            padding: "0 12px",
+                            borderRadius: "10px",
+                            border: "1px solid #16a34a",
+                            background: "#f0fdf4",
+                            color: "#166534",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          save
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={cancelDictionaryEditing}
+                          style={{
+                            height: "36px",
+                            padding: "0 12px",
+                            borderRadius: "10px",
+                            border: "1px solid #d1d5db",
+                            background: "#ffffff",
+                            color: "#475569",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          cancel
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div
+                        style={{
+                          display: "grid",
+                          gap: "6px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            color: "#64748b",
+                            letterSpacing: "0.04em",
+                            textTransform: "uppercase",
+                            fontWeight: 700,
+                          }}
+                        >
+                          source
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "14px",
+                            color: "#111827",
+                            fontWeight: 600,
+                            lineHeight: 1.6,
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {entry.source}
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "grid",
+                          gap: "6px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            color: "#64748b",
+                            letterSpacing: "0.04em",
+                            textTransform: "uppercase",
+                            fontWeight: 700,
+                          }}
+                        >
+                          target
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "14px",
+                            color: "#0f172a",
+                            lineHeight: 1.6,
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {entry.target}
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          flexWrap: "wrap",
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleDictionaryEditStart(entry)}
+                          style={{
+                            height: "36px",
+                            padding: "0 12px",
+                            borderRadius: "10px",
+                            border: "1px solid #d1d5db",
+                            background: "#ffffff",
+                            color: "#475569",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          edit
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDictionaryRemove(entry)}
+                          style={{
+                            height: "36px",
+                            padding: "0 12px",
+                            borderRadius: "10px",
+                            border: "1px solid #fecaca",
+                            background: "#fff1f2",
+                            color: "#be123c",
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                          }}
+                        >
+                          delete
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </DashboardPanel>
     </div>
   );
 }
