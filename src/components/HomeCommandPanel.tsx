@@ -8,12 +8,14 @@ import DashboardPanel from "./DashboardPanel";
 
 type HomeCommandPanelProps = {
   snapshot: DashboardSnapshot;
+  onExportSnapshot: () => void;
   onImportSnapshot: (snapshot: DashboardSnapshot) => void;
   onResetWorkspace: () => void;
 };
 
 function HomeCommandPanel({
   snapshot,
+  onExportSnapshot,
   onImportSnapshot,
   onResetWorkspace,
 }: HomeCommandPanelProps) {
@@ -36,6 +38,7 @@ function HomeCommandPanel({
       link.click();
       window.URL.revokeObjectURL(url);
 
+      onExportSnapshot();
       setMessage("現在の状態を JSON として書き出しました。");
       setMessageTone("success");
     } catch (error) {

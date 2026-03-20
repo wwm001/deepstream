@@ -13,6 +13,7 @@ import type { DashboardSnapshot } from "../utils/dashboardSnapshot";
 import HomeOverviewPanel from "./HomeOverviewPanel";
 import HomeSectionSnapshotList from "./HomeSectionSnapshotList";
 import HomeCommandPanel from "./HomeCommandPanel";
+import HomeActivityFeed, { type HomeActivityItem } from "./HomeActivityFeed";
 import SettingsControlPanel from "./SettingsControlPanel";
 import SettingsStatusList from "./SettingsStatusList";
 import LibraryControlPanel from "./LibraryControlPanel";
@@ -25,6 +26,8 @@ type DashboardExtraContentProps = {
   onSelectSection: (section: NavigationSection) => void;
 
   snapshot: DashboardSnapshot;
+  activityItems: HomeActivityItem[];
+  onExportSnapshot: () => void;
   onImportSnapshot: (snapshot: DashboardSnapshot) => void;
   onResetWorkspace: () => void;
 
@@ -84,6 +87,8 @@ function DashboardExtraContent({
   currentSection,
   onSelectSection,
   snapshot,
+  activityItems,
+  onExportSnapshot,
   onImportSnapshot,
   onResetWorkspace,
   filteredSettingsChecks,
@@ -153,9 +158,11 @@ function DashboardExtraContent({
         <HomeOverviewPanel items={homeSignals} />
         <HomeCommandPanel
           snapshot={snapshot}
+          onExportSnapshot={onExportSnapshot}
           onImportSnapshot={onImportSnapshot}
           onResetWorkspace={onResetWorkspace}
         />
+        <HomeActivityFeed items={activityItems} />
         <HomeSectionSnapshotList
           items={homeSectionSnapshots}
           onSelectSection={onSelectSection}

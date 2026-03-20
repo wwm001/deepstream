@@ -5,6 +5,7 @@ import SectionHeader from "./SectionHeader";
 import DashboardSummary from "./DashboardSummary";
 import DashboardDetailPanel from "./DashboardDetailPanel";
 import DashboardExtraContent from "./DashboardExtraContent";
+import type { HomeActivityItem } from "./HomeActivityFeed";
 import { dashboardSections } from "../dashboardData/sections";
 import { settingsChecks as initialSettingsChecks } from "../dashboardData/settingsData";
 import { libraryAssets as initialLibraryAssets } from "../dashboardData/libraryData";
@@ -37,6 +38,17 @@ type DashboardProps = {
   currentSection: NavigationSection;
   onSelectSection: (section: NavigationSection) => void;
 };
+
+function createActivityId() {
+  return `activity-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function createTimeLabel() {
+  return new Date().toLocaleTimeString("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 function Dashboard({
   currentSection,
@@ -84,6 +96,16 @@ function Dashboard({
   const [streamSort, setStreamSort] = useState<StreamSort>(
     streamPersistedState.streamSort
   );
+
+  const [activityItems, setActivityItems] = useState<HomeActivityItem[]>([
+    {
+      id: createActivityId(),
+      title: "Session Ready",
+      detail: "DeepStream の現在セッションを開始しました。",
+      timeLabel: createTimeLabel(),
+      tone: "neutral",
+    },
+  ]);
 
   const section = dashboardSections[currentSection];
 
@@ -147,6 +169,25 @@ function Dashboard({
     setStreamSort,
   });
 
+  const pushActivity = (
+    title: string,
+    detail: string,
+    tone: HomeActivityItem["tone"]
+  ) => {
+    setActivityItems((current) =>
+      [
+        {
+          id: createActivityId(),
+          title,
+          detail,
+          timeLabel: createTimeLabel(),
+          tone,
+        },
+        ...current,
+      ].slice(0, 8)
+    );
+  };
+
   const snapshot = useMemo<DashboardSnapshot>(
     () => ({
       version: 1,
@@ -184,6 +225,14 @@ function Dashboard({
     ]
   );
 
+  const handleExportSnapshot = () => {
+    pushActivity(
+      "Snapshot Exported",
+      "現在のワークスペース状態を JSON として書き出しました。",
+      "neutral"
+    );
+  };
+
   const handleImportSnapshot = (nextSnapshot: DashboardSnapshot) => {
     setSettingsItems(nextSnapshot.settings.items);
     setSettingsFilter(nextSnapshot.settings.filter);
@@ -199,6 +248,12 @@ function Dashboard({
     setStreamSort(nextSnapshot.stream.sort);
 
     onSelectSection(nextSnapshot.currentSection);
+
+    pushActivity(
+      "Snapshot Imported",
+      `スナップショットを読み込み、「${nextSnapshot.currentSection}」を復元しました。`,
+      "success"
+    );
   };
 
   const handleResetWorkspace = () => {
@@ -206,6 +261,116 @@ function Dashboard({
     handleResetLibrary();
     handleResetStream();
     onSelectSection("ホーム");
+
+    pushActivity(
+      "Workspace Reset",
+      "ワークスペース全体を初期状態へ戻しました。",
+      "warning"
+    );
+  };
+
+  const handleCycleSettingStateWithActivity = (label: string) => {
+    handleCycleSettingState(label);
+    pushActivity(
+      "Setting Updated",
+      `設定項目「${label}」の状態を切り替えました。`,
+      "neutral"
+    );
+  };
+
+  const handleToggleSettingsNotesWithActivity = () => {
+    handleToggleSettingsNotes();
+    pushActivity(
+      "Notes Visibility Changed",
+      `設定ノート表示を ${showSettingsNotes ? "off" : "on"} に切り替えました。`,
+      "neutral"
+    );
+  };
+
+  const handleAddLibraryAssetWithActivity = (asset: Omit<LibraryAsset, "id">) => {
+    const trimmedName = asset.name.trim();
+    const trimmedRole = asset.role.trim();
+    const trimmedNote = asset.note.trim();
+
+    if (!trimmedName || !trimmedRole || !trimmedNote) {
+      return;
+    }
+
+    handleAddLibraryAsset(asset);
+    pushActivity(
+      "Library Asset Added",
+      `ライブラリアセット「${trimmedName}」を追加しました。`,
+      "success"
+    );
+  };
+
+  const handleRemoveLibraryAssetWithActivity = (assetId: string) => {
+    const targetAsset = libraryItems.find((item) => item.id === assetId);
+
+    handleRemoveLibraryAsset(assetId);
+    pushActivity(
+      "Library Asset Removed",
+      targetAsset
+        ? `ライブラリアセット「${targetAsset.name}」を削除しました。`
+        : "ライブラリアセットを削除しました。",
+      "warning"
+    );
+  };
+
+  const handleResetLibraryWithActivity = () => {
+    handleResetLibrary();
+    pushActivity(
+      "Library Reset",
+      "ライブラリの一覧と表示状態を初期状態へ戻しました。",
+      "warning"
+    );
+  };
+
+  const handleAddStreamEventWithActivity = (event: Omit<StreamEvent, "id">) => {
+    const trimmedTitle = event.title.trim();
+    const trimmedDetail = event.detail.trim();
+
+    if (!trimmedTitle || !trimmedDetail) {
+      return;
+    }
+
+    handleAddStreamEvent(event);
+    pushActivity(
+      "Stream Event Added",
+      `ストリームイベント「${trimmedTitle}」を追加しました。`,
+      "success"
+    );
+  };
+
+  const handleRemoveStreamEventWithActivity = (eventId: string) => {
+    const targetEvent = streamItems.find((item) => item.id === eventId);
+
+    handleRemoveStreamEvent(eventId);
+    pushActivity(
+      "Stream Event Removed",
+      targetEvent
+        ? `ストリームイベント「${targetEvent.title}」を削除しました。`
+        : "ストリームイベントを削除しました。",
+      "warning"
+    );
+  };
+
+  const handleResetStreamWithActivity = () => {
+    handleResetStream();
+    pushActivity(
+      "Stream Reset",
+      "ストリームの一覧と表示状態を初期状態へ戻しました。",
+      "warning"
+    );
+  };
+
+  const handleResetSettingsWithActivity = () => {
+    handleResetSettings();
+    pushActivity(
+      "Settings Reset",
+      "設定チェックと表示状態を初期状態へ戻しました。",
+      "warning"
+    );
   };
 
   return (
@@ -237,6 +402,8 @@ function Dashboard({
         currentSection={currentSection}
         onSelectSection={onSelectSection}
         snapshot={snapshot}
+        activityItems={activityItems}
+        onExportSnapshot={handleExportSnapshot}
         onImportSnapshot={handleImportSnapshot}
         onResetWorkspace={handleResetWorkspace}
         filteredSettingsChecks={filteredSettingsChecks}
@@ -246,9 +413,9 @@ function Dashboard({
         filteredSettingsCount={filteredSettingsChecks.length}
         settingsStateCounts={settingsStateCounts}
         onSetSettingsFilter={setSettingsFilter}
-        onToggleSettingsNotes={handleToggleSettingsNotes}
-        onCycleSettingState={handleCycleSettingState}
-        onResetSettings={handleResetSettings}
+        onToggleSettingsNotes={handleToggleSettingsNotesWithActivity}
+        onCycleSettingState={handleCycleSettingStateWithActivity}
+        onResetSettings={handleResetSettingsWithActivity}
         filteredLibraryAssets={filteredLibraryAssets}
         libraryFilter={libraryFilter}
         librarySort={librarySort}
@@ -260,9 +427,9 @@ function Dashboard({
         onSetLibraryFilter={setLibraryFilter}
         onSetLibrarySort={setLibrarySort}
         onSetLibrarySearchTerm={setLibrarySearchTerm}
-        onAddLibraryAsset={handleAddLibraryAsset}
-        onRemoveLibraryAsset={handleRemoveLibraryAsset}
-        onResetLibrary={handleResetLibrary}
+        onAddLibraryAsset={handleAddLibraryAssetWithActivity}
+        onRemoveLibraryAsset={handleRemoveLibraryAssetWithActivity}
+        onResetLibrary={handleResetLibraryWithActivity}
         filteredStreamEvents={filteredStreamEvents}
         streamFilter={streamFilter}
         streamSort={streamSort}
@@ -272,9 +439,9 @@ function Dashboard({
         userCreatedEventCount={userCreatedEventCount}
         onSetStreamFilter={setStreamFilter}
         onSetStreamSort={setStreamSort}
-        onAddStreamEvent={handleAddStreamEvent}
-        onRemoveStreamEvent={handleRemoveStreamEvent}
-        onResetStream={handleResetStream}
+        onAddStreamEvent={handleAddStreamEventWithActivity}
+        onRemoveStreamEvent={handleRemoveStreamEventWithActivity}
+        onResetStream={handleResetStreamWithActivity}
       />
 
       <div
