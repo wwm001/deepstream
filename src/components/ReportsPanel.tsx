@@ -188,7 +188,7 @@ function ReportsPanel({
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const segmentQueueRef = useRef<ReportSegment[]>([]);
   const activeReportIdRef = useRef<string | null>(null);
-  const isStoppingRef = useRef(false);
+  const playbackSessionIdRef = useRef(0);
 
   const speechSupported =
     typeof window !== "undefined" && "speechSynthesis" in window;
@@ -261,11 +261,17 @@ function ReportsPanel({
     [items]
   );
 
-  const finishReading = () => {
+  const finishReading = (sessionId?: number) => {
+    if (
+      typeof sessionId === "number" &&
+      playbackSessionIdRef.current !== sessionId
+    ) {
+      return;
+    }
+
     utteranceRef.current = null;
     segmentQueueRef.current = [];
     activeReportIdRef.current = null;
-    isStoppingRef.current = false;
     setIsReading(false);
     setIsPaused(false);
     setReadingReportId(null);
@@ -277,12 +283,12 @@ function ReportsPanel({
       return;
     }
 
-    isStoppingRef.current = true;
+    playbackSessionIdRef.current += 1;
     window.speechSynthesis.cancel();
     finishReading();
   };
 
-  const speakSegmentAt = (segmentIndex: number) => {
+  const speakSegmentAt = (sessionId: number, segmentIndex: number) => {
     if (!speechSupported) {
       return;
     }
@@ -290,7 +296,7 @@ function ReportsPanel({
     const segment = segmentQueueRef.current[segmentIndex];
 
     if (!segment) {
-      finishReading();
+      finishReading(sessionId);
       return;
     }
 
@@ -301,6 +307,10 @@ function ReportsPanel({
     utterance.lang = "ja-JP";
 
     utterance.onstart = () => {
+      if (playbackSessionIdRef.current !== sessionId) {
+        return;
+      }
+
       setIsReading(true);
       setIsPaused(false);
       setReadingReportId(activeReportIdRef.current);
@@ -308,46 +318,67 @@ function ReportsPanel({
     };
 
     utterance.onpause = () => {
+      if (playbackSessionIdRef.current !== sessionId) {
+        return;
+      }
+
       setIsPaused(true);
     };
 
     utterance.onresume = () => {
+      if (playbackSessionIdRef.current !== sessionId) {
+        return;
+      }
+
       setIsPaused(false);
     };
 
     utterance.onend = () => {
-      if (isStoppingRef.current) {
+      if (playbackSessionIdRef.current !== sessionId) {
         return;
       }
 
       const nextIndex = segmentIndex + 1;
 
       if (nextIndex < segmentQueueRef.current.length) {
-        speakSegmentAt(nextIndex);
+        speakSegmentAt(sessionId, nextIndex);
         return;
       }
 
-      finishReading();
+      finishReading(sessionId);
     };
 
     utterance.onerror = () => {
-      finishReading();
+      finishReading(sessionId);
     };
 
     utteranceRef.current = utterance;
     window.speechSynthesis.speak(utterance);
   };
 
-  const startReading = () => {
+  const startReadingFromSegment = (segmentIndex: number) => {
     if (!speechSupported || !selectedReport) {
       return;
     }
 
+    const segments = buildReportSegments(selectedReport);
+
+    if (segmentIndex < 0 || segmentIndex >= segments.length) {
+      return;
+    }
+
+    playbackSessionIdRef.current += 1;
+    const sessionId = playbackSessionIdRef.current;
+
     window.speechSynthesis.cancel();
-    isStoppingRef.current = false;
     activeReportIdRef.current = selectedReport.id;
-    segmentQueueRef.current = buildReportSegments(selectedReport);
-    speakSegmentAt(0);
+    segmentQueueRef.current = segments;
+    setCurrentSegmentIndex(segmentIndex);
+    speakSegmentAt(sessionId, segmentIndex);
+  };
+
+  const startReading = () => {
+    startReadingFromSegment(0);
   };
 
   const pauseReading = () => {
@@ -366,6 +397,21 @@ function ReportsPanel({
 
     window.speechSynthesis.resume();
     setIsPaused(false);
+  };
+
+  const skipToNextSegment = () => {
+    if (!speechSupported || !selectedReport || currentSegmentIndex == null) {
+      return;
+    }
+
+    const nextIndex = currentSegmentIndex + 1;
+
+    if (nextIndex >= selectedSegments.length) {
+      stopReading();
+      return;
+    }
+
+    startReadingFromSegment(nextIndex);
   };
 
   useEffect(() => {
@@ -418,6 +464,12 @@ function ReportsPanel({
 
     return selectedSegments[currentSegmentIndex] ?? null;
   }, [currentSegmentIndex, selectedSegments]);
+
+  const canSkipNext =
+    speechSupported &&
+    selectedReport != null &&
+    currentSegmentIndex != null &&
+    currentSegmentIndex < selectedSegments.length - 1;
 
   return (
     <div
@@ -585,6 +637,12 @@ function ReportsPanel({
             label="read aloud"
             onClick={startReading}
             disabled={!speechSupported || !selectedReport}
+          />
+
+          <DashboardActionButton
+            label="skip next"
+            onClick={skipToNextSegment}
+            disabled={!canSkipNext}
           />
 
           <DashboardActionButton
@@ -957,6 +1015,19 @@ function ReportsPanel({
               </div>
 
               <section
+                role="button"
+                tabIndex={speechSupported ? 0 : -1}
+                onClick={() => startReadingFromSegment(0)}
+                onKeyDown={(event) => {
+                  if (!speechSupported) {
+                    return;
+                  }
+
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    startReadingFromSegment(0);
+                  }
+                }}
                 style={{
                   minHeight: "88px",
                   maxHeight: "88px",
@@ -978,6 +1049,7 @@ function ReportsPanel({
                       : "transparent",
                   transition:
                     "border-color 140ms ease, background 140ms ease",
+                  cursor: speechSupported ? "pointer" : "default",
                 }}
               >
                 <h3
@@ -1010,6 +1082,19 @@ function ReportsPanel({
               </section>
 
               <section
+                role="button"
+                tabIndex={speechSupported ? 0 : -1}
+                onClick={() => startReadingFromSegment(1)}
+                onKeyDown={(event) => {
+                  if (!speechSupported) {
+                    return;
+                  }
+
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    startReadingFromSegment(1);
+                  }
+                }}
                 style={{
                   padding: "12px 14px",
                   borderRadius: "12px",
@@ -1033,6 +1118,7 @@ function ReportsPanel({
                   overflow: "hidden",
                   transition:
                     "border-color 140ms ease, background 140ms ease",
+                  cursor: speechSupported ? "pointer" : "default",
                 }}
               >
                 <span
@@ -1063,6 +1149,19 @@ function ReportsPanel({
                   return (
                     <section
                       key={`${selectedReport.id}-paragraph-${index}`}
+                      role="button"
+                      tabIndex={speechSupported ? 0 : -1}
+                      onClick={() => startReadingFromSegment(segmentIndex)}
+                      onKeyDown={(event) => {
+                        if (!speechSupported) {
+                          return;
+                        }
+
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          startReadingFromSegment(segmentIndex);
+                        }
+                      }}
                       style={{
                         padding: "14px 16px",
                         borderRadius: "12px",
@@ -1082,6 +1181,7 @@ function ReportsPanel({
                           : "none",
                         transition:
                           "border-color 140ms ease, background 140ms ease, box-shadow 140ms ease",
+                        cursor: speechSupported ? "pointer" : "default",
                       }}
                     >
                       {paragraph}
