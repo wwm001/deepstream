@@ -184,7 +184,7 @@ function Dashboard({
           tone,
         },
         ...current,
-      ].slice(0, 8)
+      ].slice(0, 12)
     );
   };
 
@@ -269,6 +269,27 @@ function Dashboard({
     );
   };
 
+  const handleSetSettingsFilterWithActivity = (
+    filter: "all" | SettingCheck["state"]
+  ) => {
+    setSettingsFilter(filter);
+    pushActivity(
+      "Settings Filter Changed",
+      `設定フィルタを「${filter}」へ切り替えました。`,
+      "neutral"
+    );
+  };
+
+  const handleToggleSettingsNotesWithActivity = () => {
+    const nextValue = !showSettingsNotes;
+    handleToggleSettingsNotes();
+    pushActivity(
+      "Notes Visibility Changed",
+      `設定ノート表示を ${nextValue ? "on" : "off"} に切り替えました。`,
+      "neutral"
+    );
+  };
+
   const handleCycleSettingStateWithActivity = (label: string) => {
     handleCycleSettingState(label);
     pushActivity(
@@ -278,11 +299,42 @@ function Dashboard({
     );
   };
 
-  const handleToggleSettingsNotesWithActivity = () => {
-    handleToggleSettingsNotes();
+  const handleResetSettingsWithActivity = () => {
+    handleResetSettings();
     pushActivity(
-      "Notes Visibility Changed",
-      `設定ノート表示を ${showSettingsNotes ? "off" : "on"} に切り替えました。`,
+      "Settings Reset",
+      "設定チェックと表示状態を初期状態へ戻しました。",
+      "warning"
+    );
+  };
+
+  const handleSetLibraryFilterWithActivity = (
+    filter: "all" | LibraryAsset["state"]
+  ) => {
+    setLibraryFilter(filter);
+    pushActivity(
+      "Library Filter Changed",
+      `ライブラリフィルタを「${filter}」へ切り替えました。`,
+      "neutral"
+    );
+  };
+
+  const handleSetLibrarySortWithActivity = (sort: "name" | "state") => {
+    setLibrarySort(sort);
+    pushActivity(
+      "Library Sort Changed",
+      `ライブラリ並び順を「${sort}」へ切り替えました。`,
+      "neutral"
+    );
+  };
+
+  const handleSetLibrarySearchTermWithActivity = (searchTerm: string) => {
+    setLibrarySearchTerm(searchTerm);
+    pushActivity(
+      "Library Search Changed",
+      searchTerm.trim().length > 0
+        ? `ライブラリ検索語を「${searchTerm}」へ更新しました。`
+        : "ライブラリ検索語をクリアしました。",
       "neutral"
     );
   };
@@ -326,6 +378,28 @@ function Dashboard({
     );
   };
 
+  const handleSetStreamFilterWithActivity = (
+    filter: "all" | StreamEvent["phase"]
+  ) => {
+    setStreamFilter(filter);
+    pushActivity(
+      "Stream Filter Changed",
+      `ストリームフィルタを「${filter}」へ切り替えました。`,
+      "neutral"
+    );
+  };
+
+  const handleSetStreamSortWithActivity = (
+    sort: "timeline" | "newest" | "planned"
+  ) => {
+    setStreamSort(sort);
+    pushActivity(
+      "Stream Sort Changed",
+      `ストリーム並び順を「${sort}」へ切り替えました。`,
+      "neutral"
+    );
+  };
+
   const handleAddStreamEventWithActivity = (event: Omit<StreamEvent, "id">) => {
     const trimmedTitle = event.title.trim();
     const trimmedDetail = event.detail.trim();
@@ -360,15 +434,6 @@ function Dashboard({
     pushActivity(
       "Stream Reset",
       "ストリームの一覧と表示状態を初期状態へ戻しました。",
-      "warning"
-    );
-  };
-
-  const handleResetSettingsWithActivity = () => {
-    handleResetSettings();
-    pushActivity(
-      "Settings Reset",
-      "設定チェックと表示状態を初期状態へ戻しました。",
       "warning"
     );
   };
@@ -412,7 +477,7 @@ function Dashboard({
         settingsItemsCount={settingsItems.length}
         filteredSettingsCount={filteredSettingsChecks.length}
         settingsStateCounts={settingsStateCounts}
-        onSetSettingsFilter={setSettingsFilter}
+        onSetSettingsFilter={handleSetSettingsFilterWithActivity}
         onToggleSettingsNotes={handleToggleSettingsNotesWithActivity}
         onCycleSettingState={handleCycleSettingStateWithActivity}
         onResetSettings={handleResetSettingsWithActivity}
@@ -424,9 +489,9 @@ function Dashboard({
         filteredLibraryAssetsCount={filteredLibraryAssets.length}
         libraryStateCounts={libraryStateCounts}
         userCreatedAssetCount={userCreatedAssetCount}
-        onSetLibraryFilter={setLibraryFilter}
-        onSetLibrarySort={setLibrarySort}
-        onSetLibrarySearchTerm={setLibrarySearchTerm}
+        onSetLibraryFilter={handleSetLibraryFilterWithActivity}
+        onSetLibrarySort={handleSetLibrarySortWithActivity}
+        onSetLibrarySearchTerm={handleSetLibrarySearchTermWithActivity}
         onAddLibraryAsset={handleAddLibraryAssetWithActivity}
         onRemoveLibraryAsset={handleRemoveLibraryAssetWithActivity}
         onResetLibrary={handleResetLibraryWithActivity}
@@ -437,8 +502,8 @@ function Dashboard({
         filteredStreamEventsCount={filteredStreamEvents.length}
         streamPhaseCounts={streamPhaseCounts}
         userCreatedEventCount={userCreatedEventCount}
-        onSetStreamFilter={setStreamFilter}
-        onSetStreamSort={setStreamSort}
+        onSetStreamFilter={handleSetStreamFilterWithActivity}
+        onSetStreamSort={handleSetStreamSortWithActivity}
         onAddStreamEvent={handleAddStreamEventWithActivity}
         onRemoveStreamEvent={handleRemoveStreamEventWithActivity}
         onResetStream={handleResetStreamWithActivity}
