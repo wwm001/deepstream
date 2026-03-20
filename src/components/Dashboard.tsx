@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import StreamCard from "./StreamCard";
 import StatusPill from "./StatusPill";
 import SectionHeader from "./SectionHeader";
@@ -17,7 +17,10 @@ import type {
 } from "../dashboardData/types";
 import type { NavigationSection } from "../navigationItems";
 import type { DashboardSnapshot } from "../utils/dashboardSnapshot";
+import { STORAGE_KEYS } from "../utils/storageKeys";
+import { readStorageJSON, writeStorageJSON } from "../utils/safeLocalStorage";
 import {
+  DASHBOARD_STORAGE_NAMESPACE,
   type LibraryFilter,
   type LibrarySort,
   type PersistedLibraryState,
@@ -48,6 +51,57 @@ function createTimeLabel() {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isValidActivityItem(value: unknown): value is HomeActivityItem {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.title === "string" &&
+    typeof value.detail === "string" &&
+    typeof value.timeLabel === "string" &&
+    (value.tone === "neutral" ||
+      value.tone === "success" ||
+      value.tone === "warning")
+  );
+}
+
+function createInitialActivityItems(): HomeActivityItem[] {
+  return [
+    {
+      id: createActivityId(),
+      title: "Session Ready",
+      detail: "DeepStream の現在セッションを開始しました。",
+      timeLabel: createTimeLabel(),
+      tone: "neutral",
+    },
+  ];
+}
+
+function readStoredActivityItems(): HomeActivityItem[] {
+  const fallback = createInitialActivityItems();
+
+  const parsed = readStorageJSON<unknown>(
+    STORAGE_KEYS.activityFeed,
+    DASHBOARD_STORAGE_NAMESPACE,
+    fallback
+  );
+
+  if (!Array.isArray(parsed)) {
+    return fallback;
+  }
+
+  const validItems = parsed.filter(isValidActivityItem);
+
+  if (parsed.length > 0 && validItems.length === 0) {
+    return fallback;
+  }
+
+  return validItems;
 }
 
 function Dashboard({
@@ -97,15 +151,9 @@ function Dashboard({
     streamPersistedState.streamSort
   );
 
-  const [activityItems, setActivityItems] = useState<HomeActivityItem[]>([
-    {
-      id: createActivityId(),
-      title: "Session Ready",
-      detail: "DeepStream の現在セッションを開始しました。",
-      timeLabel: createTimeLabel(),
-      tone: "neutral",
-    },
-  ]);
+  const [activityItems, setActivityItems] = useState<HomeActivityItem[]>(() =>
+    readStoredActivityItems()
+  );
 
   const section = dashboardSections[currentSection];
 
@@ -121,6 +169,14 @@ function Dashboard({
     streamFilter,
     streamSort,
   });
+
+  useEffect(() => {
+    writeStorageJSON(
+      STORAGE_KEYS.activityFeed,
+      activityItems,
+      DASHBOARD_STORAGE_NAMESPACE
+    );
+  }, [activityItems]);
 
   const {
     filteredSettingsChecks,
@@ -224,6 +280,10 @@ function Dashboard({
       streamSort,
     ]
   );
+
+  const handleClearActivity = () => {
+    setActivityItems([]);
+  };
 
   const handleExportSnapshot = () => {
     pushActivity(
@@ -538,6 +598,7 @@ function Dashboard({
         onSelectSection={onSelectSection}
         snapshot={snapshot}
         activityItems={activityItems}
+        onClearActivity={handleClearActivity}
         onExportSnapshot={handleExportSnapshot}
         onImportSnapshot={handleImportSnapshot}
         onResetWorkspace={handleResetWorkspace}

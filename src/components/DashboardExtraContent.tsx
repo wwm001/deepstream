@@ -27,6 +27,7 @@ type DashboardExtraContentProps = {
 
   snapshot: DashboardSnapshot;
   activityItems: HomeActivityItem[];
+  onClearActivity: () => void;
   onExportSnapshot: () => void;
   onImportSnapshot: (snapshot: DashboardSnapshot) => void;
   onResetWorkspace: () => void;
@@ -90,6 +91,7 @@ function DashboardExtraContent({
   onSelectSection,
   snapshot,
   activityItems,
+  onClearActivity,
   onExportSnapshot,
   onImportSnapshot,
   onResetWorkspace,
@@ -166,7 +168,10 @@ function DashboardExtraContent({
           onImportSnapshot={onImportSnapshot}
           onResetWorkspace={onResetWorkspace}
         />
-        <HomeActivityFeed items={activityItems} />
+        <HomeActivityFeed
+          items={activityItems}
+          onClearActivity={onClearActivity}
+        />
         <HomeSectionSnapshotList
           items={homeSectionSnapshots}
           onSelectSection={onSelectSection}

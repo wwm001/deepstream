@@ -10,6 +10,7 @@ export type HomeActivityItem = {
 
 type HomeActivityFeedProps = {
   items: HomeActivityItem[];
+  onClearActivity: () => void;
 };
 
 const toneStyles: Record<
@@ -41,9 +42,59 @@ const toneStyles: Record<
   },
 };
 
-function HomeActivityFeed({ items }: HomeActivityFeedProps) {
+function HomeActivityFeed({
+  items,
+  onClearActivity,
+}: HomeActivityFeedProps) {
+  const handleConfirmClear = () => {
+    if (items.length === 0) {
+      return;
+    }
+
+    const accepted = window.confirm(
+      "Recent Activity をすべてクリアします。続行しますか？"
+    );
+
+    if (!accepted) {
+      return;
+    }
+
+    onClearActivity();
+  };
+
   return (
     <DashboardPanel title="Recent Activity">
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+        }}
+      >
+        <button
+          type="button"
+          onClick={handleConfirmClear}
+          disabled={items.length === 0}
+          style={{
+            border: "1px solid #e5e7eb",
+            background: items.length === 0 ? "#f8fafc" : "#ffffff",
+            color: items.length === 0 ? "#9ca3af" : "#6b7280",
+            borderRadius: "999px",
+            padding: "8px 12px",
+            fontSize: "11px",
+            fontWeight: 700,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            cursor: items.length === 0 ? "not-allowed" : "pointer",
+            boxShadow:
+              items.length === 0
+                ? "none"
+                : "0 4px 10px rgba(15, 23, 42, 0.04)",
+          }}
+        >
+          clear log
+        </button>
+      </div>
+
       {items.length === 0 ? (
         <article
           style={{
