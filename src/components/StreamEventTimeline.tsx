@@ -19,37 +19,41 @@ type StreamEventTimelineProps = {
   items: StreamEventItem[];
   onRemoveEvent?: (eventId: string) => void;
   onAddEvent?: (event: Omit<StreamEvent, "id">) => void;
+  onUpdateEvent?: (eventId: string, event: Omit<StreamEvent, "id">) => void;
   onResetEvents?: () => void;
 };
 
-type EventFormErrors = Partial<Record<"title" | "detail", string>>;
+type StreamFormErrors = Partial<Record<"title" | "detail", string>>;
 
 const TITLE_MAX_LENGTH = 80;
 const DETAIL_MAX_LENGTH = 300;
 
 const phaseStyles: Record<
   StreamEvent["phase"],
-  { color: string; background: string }
+  { color: string; background: string; border: string }
 > = {
   done: {
     color: "#1d4ed8",
-    background: "#dbeafe",
+    background: "#eff6ff",
+    border: "#bfdbfe",
   },
   current: {
     color: "#047857",
-    background: "#d1fae5",
+    background: "#ecfdf5",
+    border: "#a7f3d0",
   },
   next: {
     color: "#b45309",
-    background: "#fef3c7",
+    background: "#fffbeb",
+    border: "#fde68a",
   },
 };
 
-function validateEventInput(input: {
+function validateStreamInput(input: {
   title: string;
   detail: string;
-}): EventFormErrors {
-  const errors: EventFormErrors = {};
+}): StreamFormErrors {
+  const errors: StreamFormErrors = {};
 
   if (!input.title) {
     errors.title = "title を入力してください。";
@@ -70,23 +74,30 @@ function StreamEventTimeline({
   items,
   onRemoveEvent,
   onAddEvent,
+  onUpdateEvent,
   onResetEvents,
 }: StreamEventTimelineProps) {
   const [title, setTitle] = useState("");
   const [detail, setDetail] = useState("");
   const [phase, setPhase] = useState<StreamEvent["phase"]>("current");
-  const [errors, setErrors] = useState<EventFormErrors>({});
+  const [errors, setErrors] = useState<StreamFormErrors>({});
   const [submitMessage, setSubmitMessage] = useState("");
+
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const [editingDetail, setEditingDetail] = useState("");
+  const [editingPhase, setEditingPhase] = useState<StreamEvent["phase"]>("current");
+  const [editingErrors, setEditingErrors] = useState<StreamFormErrors>({});
 
   const titleInputRef = useRef<HTMLInputElement>(null);
   const detailTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const editTitleInputRef = useRef<HTMLInputElement>(null);
+  const editDetailTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const trimmedTitle = title.trim();
   const trimmedDetail = detail.trim();
-
-  const isDirty = useMemo(() => {
-    return title.length > 0 || detail.length > 0 || phase !== "current";
-  }, [title, detail, phase]);
+  const trimmedEditingTitle = editingTitle.trim();
+  const trimmedEditingDetail = editingDetail.trim();
 
   const canSubmit = useMemo(() => {
     return (
@@ -96,25 +107,69 @@ function StreamEventTimeline({
     );
   }, [trimmedTitle, trimmedDetail, onAddEvent]);
 
+  const canSaveEdit = useMemo(() => {
+    return (
+      trimmedEditingTitle.length > 0 &&
+      trimmedEditingDetail.length > 0 &&
+      typeof onUpdateEvent === "function" &&
+      Boolean(editingEventId)
+    );
+  }, [trimmedEditingTitle, trimmedEditingDetail, onUpdateEvent, editingEventId]);
+
+  const isDirty = useMemo(() => {
+    return (
+      title.length > 0 ||
+      detail.length > 0 ||
+      phase !== "current" ||
+      Object.keys(errors).length > 0 ||
+      submitMessage.length > 0
+    );
+  }, [title, detail, phase, errors, submitMessage]);
+
   useEffect(() => {
     titleInputRef.current?.focus();
   }, []);
 
-  const clearForm = (shouldFocus = false) => {
+  useEffect(() => {
+    if (editingEventId) {
+      requestAnimationFrame(() => {
+        editTitleInputRef.current?.focus();
+      });
+    }
+  }, [editingEventId]);
+
+  const clearForm = (withFocus = false) => {
     setTitle("");
     setDetail("");
     setPhase("current");
     setErrors({});
     setSubmitMessage("");
 
-    if (shouldFocus) {
+    if (withFocus) {
       requestAnimationFrame(() => {
         titleInputRef.current?.focus();
       });
     }
   };
 
-  const focusFirstError = (nextErrors: EventFormErrors) => {
+  const cancelEditing = () => {
+    setEditingEventId(null);
+    setEditingTitle("");
+    setEditingDetail("");
+    setEditingPhase("current");
+    setEditingErrors({});
+  };
+
+  const startEditing = (item: StreamEventItem) => {
+    setEditingEventId(item.id ?? null);
+    setEditingTitle(item.title);
+    setEditingDetail(item.detail);
+    setEditingPhase(item.phase);
+    setEditingErrors({});
+    setSubmitMessage("");
+  };
+
+  const focusFirstAddError = (nextErrors: StreamFormErrors) => {
     if (nextErrors.title) {
       titleInputRef.current?.focus();
       return;
@@ -125,18 +180,33 @@ function StreamEventTimeline({
     }
   };
 
+  const focusFirstEditError = (nextErrors: StreamFormErrors) => {
+    if (nextErrors.title) {
+      editTitleInputRef.current?.focus();
+      return;
+    }
+
+    if (nextErrors.detail) {
+      editDetailTextareaRef.current?.focus();
+    }
+  };
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const nextErrors = validateEventInput({
+    if (!onAddEvent) {
+      return;
+    }
+
+    const nextErrors = validateStreamInput({
       title: trimmedTitle,
       detail: trimmedDetail,
     });
 
-    if (Object.keys(nextErrors).length > 0 || !onAddEvent) {
+    if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       setSubmitMessage("");
-      focusFirstError(nextErrors);
+      focusFirstAddError(nextErrors);
       return;
     }
 
@@ -146,22 +216,39 @@ function StreamEventTimeline({
       phase,
     });
 
-    clearForm(false);
+    setTitle("");
+    setDetail("");
+    setPhase("current");
+    setErrors({});
     setSubmitMessage("event を追加しました。");
     requestAnimationFrame(() => {
       titleInputRef.current?.focus();
     });
   };
 
-  const handleDetailKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-      event.preventDefault();
-
-      const form = event.currentTarget.form;
-      if (form) {
-        form.requestSubmit();
-      }
+  const handleSaveEdit = (eventId: string) => {
+    if (!onUpdateEvent) {
+      return;
     }
+
+    const nextErrors = validateStreamInput({
+      title: trimmedEditingTitle,
+      detail: trimmedEditingDetail,
+    });
+
+    if (Object.keys(nextErrors).length > 0) {
+      setEditingErrors(nextErrors);
+      focusFirstEditError(nextErrors);
+      return;
+    }
+
+    onUpdateEvent(eventId, {
+      title: trimmedEditingTitle,
+      detail: trimmedEditingDetail,
+      phase: editingPhase,
+    });
+
+    cancelEditing();
   };
 
   const handleRemoveEvent = (item: StreamEventItem) => {
@@ -169,12 +256,13 @@ function StreamEventTimeline({
       return;
     }
 
-    const shouldRemove = window.confirm(
-      `Remove event "${item.title}"?`,
-    );
-
+    const shouldRemove = window.confirm(`Remove event "${item.title}"?`);
     if (!shouldRemove) {
       return;
+    }
+
+    if (editingEventId === item.id) {
+      cancelEditing();
     }
 
     onRemoveEvent(item.id);
@@ -185,15 +273,20 @@ function StreamEventTimeline({
       return;
     }
 
-    const shouldReset = window.confirm(
-      "Reset all timeline events?",
-    );
-
+    const shouldReset = window.confirm("Reset all timeline events?");
     if (!shouldReset) {
       return;
     }
 
+    cancelEditing();
     onResetEvents();
+  };
+
+  const handleAddDetailKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && canSubmit) {
+      event.preventDefault();
+      event.currentTarget.form?.requestSubmit();
+    }
   };
 
   return (
@@ -298,7 +391,7 @@ function StreamEventTimeline({
                     setErrors((current) => ({ ...current, detail: undefined }));
                     setSubmitMessage("");
                   }}
-                  onKeyDown={handleDetailKeyDown}
+                  onKeyDown={handleAddDetailKeyDown}
                   placeholder="detail"
                   rows={3}
                   aria-invalid={Boolean(errors.detail)}
@@ -409,6 +502,7 @@ function StreamEventTimeline({
       >
         {items.map((item, index) => {
           const phaseStyle = phaseStyles[item.phase];
+          const isEditing = item.id != null && editingEventId === item.id;
 
           return (
             <article
@@ -454,7 +548,7 @@ function StreamEventTimeline({
                   padding: "14px",
                   borderRadius: "12px",
                   background: "#ffffff",
-                  border: "1px solid #e5e7eb",
+                  border: `1px solid ${phaseStyle.border}`,
                   boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
                   display: "grid",
                   gap: "8px",
@@ -493,6 +587,13 @@ function StreamEventTimeline({
                       background={phaseStyle.background}
                     />
 
+                    {onUpdateEvent && item.id && !isEditing && (
+                      <DashboardActionButton
+                        label="edit"
+                        onClick={() => startEditing(item)}
+                      />
+                    )}
+
                     {onRemoveEvent && item.id && (
                       <DashboardActionButton
                         label="remove"
@@ -502,16 +603,166 @@ function StreamEventTimeline({
                   </div>
                 </div>
 
-                <p
-                  style={{
-                    margin: 0,
-                    color: "#4b5563",
-                    lineHeight: 1.7,
-                    fontSize: "14px",
-                  }}
-                >
-                  {item.detail}
-                </p>
+                {isEditing ? (
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: "10px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                        gap: "10px",
+                      }}
+                    >
+                      <div>
+                        <input
+                          ref={editTitleInputRef}
+                          type="text"
+                          value={editingTitle}
+                          maxLength={TITLE_MAX_LENGTH}
+                          onChange={(event) => {
+                            setEditingTitle(event.target.value);
+                            setEditingErrors((current) => ({
+                              ...current,
+                              title: undefined,
+                            }));
+                          }}
+                          placeholder="title"
+                          style={{
+                            width: "100%",
+                            padding: "10px 12px",
+                            borderRadius: "10px",
+                            border: editingErrors.title
+                              ? "1px solid #dc2626"
+                              : "1px solid #d1d5db",
+                            background: "#ffffff",
+                            color: "#111827",
+                            fontSize: "14px",
+                            boxSizing: "border-box",
+                          }}
+                        />
+                        {editingErrors.title && (
+                          <p
+                            style={{
+                              margin: "6px 0 0 0",
+                              color: "#b91c1c",
+                              fontSize: "12px",
+                              lineHeight: 1.5,
+                            }}
+                          >
+                            {editingErrors.title}
+                          </p>
+                        )}
+                      </div>
+
+                      <select
+                        value={editingPhase}
+                        onChange={(event) =>
+                          setEditingPhase(event.target.value as StreamEvent["phase"])
+                        }
+                        style={{
+                          width: "100%",
+                          padding: "10px 12px",
+                          borderRadius: "10px",
+                          border: "1px solid #d1d5db",
+                          background: "#ffffff",
+                          color: "#111827",
+                          fontSize: "14px",
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        <option value="done">done</option>
+                        <option value="current">current</option>
+                        <option value="next">next</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <textarea
+                        ref={editDetailTextareaRef}
+                        value={editingDetail}
+                        maxLength={DETAIL_MAX_LENGTH}
+                        onChange={(event) => {
+                          setEditingDetail(event.target.value);
+                          setEditingErrors((current) => ({
+                            ...current,
+                            detail: undefined,
+                          }));
+                        }}
+                        onKeyDown={(event) => {
+                          if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+                            event.preventDefault();
+                            if (item.id) {
+                              handleSaveEdit(item.id);
+                            }
+                          }
+                          if (event.key === "Escape") {
+                            event.preventDefault();
+                            cancelEditing();
+                          }
+                        }}
+                        placeholder="detail"
+                        rows={4}
+                        style={{
+                          width: "100%",
+                          padding: "10px 12px",
+                          borderRadius: "10px",
+                          border: editingErrors.detail
+                            ? "1px solid #dc2626"
+                            : "1px solid #d1d5db",
+                          background: "#ffffff",
+                          color: "#111827",
+                          fontSize: "14px",
+                          boxSizing: "border-box",
+                          resize: "vertical",
+                          fontFamily: "inherit",
+                        }}
+                      />
+                      {editingErrors.detail && (
+                        <p
+                          style={{
+                            margin: "6px 0 0 0",
+                            color: "#b91c1c",
+                            fontSize: "12px",
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {editingErrors.detail}
+                        </p>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "flex-end",
+                        gap: "8px",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <DashboardActionButton label="cancel" onClick={cancelEditing} />
+                      <DashboardActionButton
+                        label="save"
+                        onClick={() => item.id && handleSaveEdit(item.id)}
+                        disabled={!canSaveEdit}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <p
+                    style={{
+                      margin: "10px 0 0 0",
+                      color: "#374151",
+                      lineHeight: 1.7,
+                      fontSize: "14px",
+                    }}
+                  >
+                    {item.detail}
+                  </p>
+                )}
               </div>
             </article>
           );

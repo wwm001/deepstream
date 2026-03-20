@@ -20,6 +20,7 @@ type LibraryAssetListProps = {
   items: LibraryAssetItem[];
   onRemoveAsset?: (assetId: string) => void;
   onAddAsset?: (asset: Omit<LibraryAsset, "id">) => void;
+  onUpdateAsset?: (assetId: string, asset: Omit<LibraryAsset, "id">) => void;
   onResetAssets?: () => void;
 };
 
@@ -31,19 +32,22 @@ const NOTE_MAX_LENGTH = 300;
 
 const stateStyles: Record<
   LibraryAsset["state"],
-  { color: string; background: string }
+  { color: string; background: string; border: string }
 > = {
   stable: {
     color: "#1d4ed8",
-    background: "#dbeafe",
+    background: "#eff6ff",
+    border: "#bfdbfe",
   },
   active: {
     color: "#047857",
-    background: "#d1fae5",
+    background: "#ecfdf5",
+    border: "#a7f3d0",
   },
   next: {
     color: "#b45309",
-    background: "#fef3c7",
+    background: "#fffbeb",
+    border: "#fde68a",
   },
 };
 
@@ -79,6 +83,7 @@ function LibraryAssetList({
   items,
   onRemoveAsset,
   onAddAsset,
+  onUpdateAsset,
   onResetAssets,
 }: LibraryAssetListProps) {
   const [name, setName] = useState("");
@@ -88,22 +93,39 @@ function LibraryAssetList({
   const [errors, setErrors] = useState<AssetFormErrors>({});
   const [submitMessage, setSubmitMessage] = useState("");
 
+  const [editingAssetId, setEditingAssetId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const [editingRole, setEditingRole] = useState("");
+  const [editingNote, setEditingNote] = useState("");
+  const [editingState, setEditingState] = useState<LibraryAsset["state"]>("active");
+  const [editingErrors, setEditingErrors] = useState<AssetFormErrors>({});
+
   const nameInputRef = useRef<HTMLInputElement>(null);
   const roleInputRef = useRef<HTMLInputElement>(null);
   const noteTextareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const editNameInputRef = useRef<HTMLInputElement>(null);
+  const editRoleInputRef = useRef<HTMLInputElement>(null);
+  const editNoteTextareaRef = useRef<HTMLTextAreaElement>(null);
+
   const trimmedName = name.trim();
   const trimmedRole = role.trim();
   const trimmedNote = note.trim();
+
+  const trimmedEditingName = editingName.trim();
+  const trimmedEditingRole = editingRole.trim();
+  const trimmedEditingNote = editingNote.trim();
 
   const isDirty = useMemo(() => {
     return (
       name.length > 0 ||
       role.length > 0 ||
       note.length > 0 ||
-      state !== "active"
+      state !== "active" ||
+      Object.keys(errors).length > 0 ||
+      submitMessage.length > 0
     );
-  }, [name, role, note, state]);
+  }, [name, role, note, state, errors, submitMessage]);
 
   const canSubmit = useMemo(() => {
     return (
@@ -114,9 +136,33 @@ function LibraryAssetList({
     );
   }, [trimmedName, trimmedRole, trimmedNote, onAddAsset]);
 
+  const canSaveEdit = useMemo(() => {
+    return (
+      trimmedEditingName.length > 0 &&
+      trimmedEditingRole.length > 0 &&
+      trimmedEditingNote.length > 0 &&
+      typeof onUpdateAsset === "function" &&
+      Boolean(editingAssetId)
+    );
+  }, [
+    trimmedEditingName,
+    trimmedEditingRole,
+    trimmedEditingNote,
+    onUpdateAsset,
+    editingAssetId,
+  ]);
+
   useEffect(() => {
     nameInputRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (editingAssetId) {
+      requestAnimationFrame(() => {
+        editNameInputRef.current?.focus();
+      });
+    }
+  }, [editingAssetId]);
 
   const clearForm = (shouldFocus = false) => {
     setName("");
@@ -133,7 +179,7 @@ function LibraryAssetList({
     }
   };
 
-  const focusFirstError = (nextErrors: AssetFormErrors) => {
+  const focusFirstAddError = (nextErrors: AssetFormErrors) => {
     if (nextErrors.name) {
       nameInputRef.current?.focus();
       return;
@@ -149,8 +195,47 @@ function LibraryAssetList({
     }
   };
 
+  const focusFirstEditError = (nextErrors: AssetFormErrors) => {
+    if (nextErrors.name) {
+      editNameInputRef.current?.focus();
+      return;
+    }
+
+    if (nextErrors.role) {
+      editRoleInputRef.current?.focus();
+      return;
+    }
+
+    if (nextErrors.note) {
+      editNoteTextareaRef.current?.focus();
+    }
+  };
+
+  const cancelEditing = () => {
+    setEditingAssetId(null);
+    setEditingName("");
+    setEditingRole("");
+    setEditingNote("");
+    setEditingState("active");
+    setEditingErrors({});
+  };
+
+  const startEditing = (item: LibraryAssetItem) => {
+    setEditingAssetId(item.id ?? null);
+    setEditingName(item.name);
+    setEditingRole(item.role);
+    setEditingNote(item.note);
+    setEditingState(item.state);
+    setEditingErrors({});
+    setSubmitMessage("");
+  };
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!onAddAsset) {
+      return;
+    }
 
     const nextErrors = validateAssetInput({
       name: trimmedName,
@@ -158,10 +243,10 @@ function LibraryAssetList({
       note: trimmedNote,
     });
 
-    if (Object.keys(nextErrors).length > 0 || !onAddAsset) {
+    if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       setSubmitMessage("");
-      focusFirstError(nextErrors);
+      focusFirstAddError(nextErrors);
       return;
     }
 
@@ -172,22 +257,42 @@ function LibraryAssetList({
       state,
     });
 
-    clearForm(false);
+    setName("");
+    setRole("");
+    setNote("");
+    setState("active");
+    setErrors({});
     setSubmitMessage("asset を追加しました。");
     requestAnimationFrame(() => {
       nameInputRef.current?.focus();
     });
   };
 
-  const handleNoteKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-      event.preventDefault();
-
-      const form = event.currentTarget.form;
-      if (form) {
-        form.requestSubmit();
-      }
+  const handleSaveEdit = (assetId: string) => {
+    if (!onUpdateAsset) {
+      return;
     }
+
+    const nextErrors = validateAssetInput({
+      name: trimmedEditingName,
+      role: trimmedEditingRole,
+      note: trimmedEditingNote,
+    });
+
+    if (Object.keys(nextErrors).length > 0) {
+      setEditingErrors(nextErrors);
+      focusFirstEditError(nextErrors);
+      return;
+    }
+
+    onUpdateAsset(assetId, {
+      name: trimmedEditingName,
+      role: trimmedEditingRole,
+      note: trimmedEditingNote,
+      state: editingState,
+    });
+
+    cancelEditing();
   };
 
   const handleRemoveAsset = (item: LibraryAssetItem) => {
@@ -195,12 +300,13 @@ function LibraryAssetList({
       return;
     }
 
-    const shouldRemove = window.confirm(
-      `Remove asset "${item.name}"?`,
-    );
-
+    const shouldRemove = window.confirm(`Remove asset "${item.name}"?`);
     if (!shouldRemove) {
       return;
+    }
+
+    if (editingAssetId === item.id) {
+      cancelEditing();
     }
 
     onRemoveAsset(item.id);
@@ -211,15 +317,20 @@ function LibraryAssetList({
       return;
     }
 
-    const shouldReset = window.confirm(
-      "Reset all component assets?",
-    );
-
+    const shouldReset = window.confirm("Reset all component assets?");
     if (!shouldReset) {
       return;
     }
 
+    cancelEditing();
     onResetAssets();
+  };
+
+  const handleAddNoteKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && canSubmit) {
+      event.preventDefault();
+      event.currentTarget.form?.requestSubmit();
+    }
   };
 
   return (
@@ -364,7 +475,7 @@ function LibraryAssetList({
                     setErrors((current) => ({ ...current, note: undefined }));
                     setSubmitMessage("");
                   }}
-                  onKeyDown={handleNoteKeyDown}
+                  onKeyDown={handleAddNoteKeyDown}
                   placeholder="note"
                   rows={3}
                   aria-invalid={Boolean(errors.note)}
@@ -476,6 +587,7 @@ function LibraryAssetList({
       >
         {items.map((item) => {
           const stateStyle = stateStyles[item.state];
+          const isEditing = item.id != null && editingAssetId === item.id;
 
           return (
             <DashboardTile
@@ -496,6 +608,13 @@ function LibraryAssetList({
                     background={stateStyle.background}
                   />
 
+                  {onUpdateAsset && item.id && !isEditing && (
+                    <DashboardActionButton
+                      label="edit"
+                      onClick={() => startEditing(item)}
+                    />
+                  )}
+
                   {onRemoveAsset && item.id && (
                     <DashboardActionButton
                       label="remove"
@@ -505,27 +624,220 @@ function LibraryAssetList({
                 </div>
               }
             >
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  color: "#111827",
-                }}
-              >
-                {item.role}
-              </p>
+              {isEditing ? (
+                <div
+                  style={{
+                    display: "grid",
+                    gap: "10px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                      gap: "10px",
+                    }}
+                  >
+                    <div>
+                      <input
+                        ref={editNameInputRef}
+                        type="text"
+                        value={editingName}
+                        maxLength={NAME_MAX_LENGTH}
+                        onChange={(event) => {
+                          setEditingName(event.target.value);
+                          setEditingErrors((current) => ({
+                            ...current,
+                            name: undefined,
+                          }));
+                        }}
+                        placeholder="name"
+                        style={{
+                          width: "100%",
+                          padding: "10px 12px",
+                          borderRadius: "10px",
+                          border: editingErrors.name
+                            ? "1px solid #dc2626"
+                            : "1px solid #d1d5db",
+                          background: "#ffffff",
+                          color: "#111827",
+                          fontSize: "14px",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                      {editingErrors.name && (
+                        <p
+                          style={{
+                            margin: "6px 0 0 0",
+                            color: "#b91c1c",
+                            fontSize: "12px",
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {editingErrors.name}
+                        </p>
+                      )}
+                    </div>
 
-              <p
-                style={{
-                  margin: "8px 0 0 0",
-                  color: "#4b5563",
-                  lineHeight: 1.6,
-                  fontSize: "14px",
-                }}
-              >
-                {item.note}
-              </p>
+                    <div>
+                      <input
+                        ref={editRoleInputRef}
+                        type="text"
+                        value={editingRole}
+                        maxLength={ROLE_MAX_LENGTH}
+                        onChange={(event) => {
+                          setEditingRole(event.target.value);
+                          setEditingErrors((current) => ({
+                            ...current,
+                            role: undefined,
+                          }));
+                        }}
+                        placeholder="role"
+                        style={{
+                          width: "100%",
+                          padding: "10px 12px",
+                          borderRadius: "10px",
+                          border: editingErrors.role
+                            ? "1px solid #dc2626"
+                            : "1px solid #d1d5db",
+                          background: "#ffffff",
+                          color: "#111827",
+                          fontSize: "14px",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                      {editingErrors.role && (
+                        <p
+                          style={{
+                            margin: "6px 0 0 0",
+                            color: "#b91c1c",
+                            fontSize: "12px",
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {editingErrors.role}
+                        </p>
+                      )}
+                    </div>
+
+                    <select
+                      value={editingState}
+                      onChange={(event) =>
+                        setEditingState(event.target.value as LibraryAsset["state"])
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        borderRadius: "10px",
+                        border: "1px solid #d1d5db",
+                        background: "#ffffff",
+                        color: "#111827",
+                        fontSize: "14px",
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      <option value="stable">stable</option>
+                      <option value="active">active</option>
+                      <option value="next">next</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <textarea
+                      ref={editNoteTextareaRef}
+                      value={editingNote}
+                      maxLength={NOTE_MAX_LENGTH}
+                      onChange={(event) => {
+                        setEditingNote(event.target.value);
+                        setEditingErrors((current) => ({
+                          ...current,
+                          note: undefined,
+                        }));
+                      }}
+                      onKeyDown={(event) => {
+                        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+                          event.preventDefault();
+                          if (item.id) {
+                            handleSaveEdit(item.id);
+                          }
+                        }
+                        if (event.key === "Escape") {
+                          event.preventDefault();
+                          cancelEditing();
+                        }
+                      }}
+                      placeholder="note"
+                      rows={4}
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        borderRadius: "10px",
+                        border: editingErrors.note
+                          ? "1px solid #dc2626"
+                          : "1px solid #d1d5db",
+                        background: "#ffffff",
+                        color: "#111827",
+                        fontSize: "14px",
+                        boxSizing: "border-box",
+                        resize: "vertical",
+                        fontFamily: "inherit",
+                      }}
+                    />
+                    {editingErrors.note && (
+                      <p
+                        style={{
+                          margin: "6px 0 0 0",
+                          color: "#b91c1c",
+                          fontSize: "12px",
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {editingErrors.note}
+                      </p>
+                    )}
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      gap: "8px",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <DashboardActionButton label="cancel" onClick={cancelEditing} />
+                    <DashboardActionButton
+                      label="save"
+                      onClick={() => item.id && handleSaveEdit(item.id)}
+                      disabled={!canSaveEdit}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: "14px",
+                      fontWeight: 600,
+                      color: "#111827",
+                    }}
+                  >
+                    {item.role}
+                  </p>
+
+                  <p
+                    style={{
+                      margin: "8px 0 0 0",
+                      color: "#4b5563",
+                      lineHeight: 1.6,
+                      fontSize: "14px",
+                    }}
+                  >
+                    {item.note}
+                  </p>
+                </>
+              )}
             </DashboardTile>
           );
         })}
