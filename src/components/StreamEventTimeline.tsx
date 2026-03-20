@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -18,41 +19,37 @@ type StreamEventTimelineProps = {
   items: StreamEventItem[];
   onRemoveEvent?: (eventId: string) => void;
   onAddEvent?: (event: Omit<StreamEvent, "id">) => void;
-  onUpdateEvent?: (eventId: string, event: Omit<StreamEvent, "id">) => void;
   onResetEvents?: () => void;
 };
 
-type StreamFormErrors = Partial<Record<"title" | "detail", string>>;
+type EventFormErrors = Partial<Record<"title" | "detail", string>>;
 
 const TITLE_MAX_LENGTH = 80;
 const DETAIL_MAX_LENGTH = 300;
 
 const phaseStyles: Record<
   StreamEvent["phase"],
-  { color: string; background: string; border: string }
+  { color: string; background: string }
 > = {
   done: {
     color: "#1d4ed8",
-    background: "#eff6ff",
-    border: "#bfdbfe",
+    background: "#dbeafe",
   },
   current: {
     color: "#047857",
-    background: "#ecfdf5",
-    border: "#a7f3d0",
+    background: "#d1fae5",
   },
   next: {
     color: "#b45309",
-    background: "#fffbeb",
-    border: "#fde68a",
+    background: "#fef3c7",
   },
 };
 
-function validateStreamInput(input: {
+function validateEventInput(input: {
   title: string;
   detail: string;
-}): StreamFormErrors {
-  const errors: StreamFormErrors = {};
+}): EventFormErrors {
+  const errors: EventFormErrors = {};
 
   if (!input.title) {
     errors.title = "title を入力してください。";
@@ -73,29 +70,23 @@ function StreamEventTimeline({
   items,
   onRemoveEvent,
   onAddEvent,
-  onUpdateEvent,
   onResetEvents,
 }: StreamEventTimelineProps) {
   const [title, setTitle] = useState("");
   const [detail, setDetail] = useState("");
   const [phase, setPhase] = useState<StreamEvent["phase"]>("current");
-  const [errors, setErrors] = useState<StreamFormErrors>({});
+  const [errors, setErrors] = useState<EventFormErrors>({});
   const [submitMessage, setSubmitMessage] = useState("");
 
-  const [editingEventId, setEditingEventId] = useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = useState("");
-  const [editingDetail, setEditingDetail] = useState("");
-  const [editingPhase, setEditingPhase] = useState<StreamEvent["phase"]>("current");
-  const [editingErrors, setEditingErrors] = useState<StreamFormErrors>({});
-
-  const formRef = useRef<HTMLFormElement>(null);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const detailTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const trimmedTitle = title.trim();
   const trimmedDetail = detail.trim();
-  const trimmedEditingTitle = editingTitle.trim();
-  const trimmedEditingDetail = editingDetail.trim();
+
+  const isDirty = useMemo(() => {
+    return title.length > 0 || detail.length > 0 || phase !== "current";
+  }, [title, detail, phase]);
 
   const canSubmit = useMemo(() => {
     return (
@@ -105,47 +96,47 @@ function StreamEventTimeline({
     );
   }, [trimmedTitle, trimmedDetail, onAddEvent]);
 
-  const isDirty = useMemo(() => {
-    return (
-      title.length > 0 ||
-      detail.length > 0 ||
-      phase !== "current" ||
-      Object.keys(errors).length > 0 ||
-      submitMessage.length > 0
-    );
-  }, [title, detail, phase, errors, submitMessage]);
+  useEffect(() => {
+    titleInputRef.current?.focus();
+  }, []);
 
-  const clearForm = (withMessage = false) => {
+  const clearForm = (shouldFocus = false) => {
     setTitle("");
     setDetail("");
     setPhase("current");
     setErrors({});
-    setSubmitMessage(withMessage ? "入力をクリアしました。" : "");
-    titleInputRef.current?.focus();
+    setSubmitMessage("");
+
+    if (shouldFocus) {
+      requestAnimationFrame(() => {
+        titleInputRef.current?.focus();
+      });
+    }
+  };
+
+  const focusFirstError = (nextErrors: EventFormErrors) => {
+    if (nextErrors.title) {
+      titleInputRef.current?.focus();
+      return;
+    }
+
+    if (nextErrors.detail) {
+      detailTextareaRef.current?.focus();
+    }
   };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!onAddEvent) {
-      return;
-    }
-
-    const nextErrors = validateStreamInput({
+    const nextErrors = validateEventInput({
       title: trimmedTitle,
       detail: trimmedDetail,
     });
 
-    if (Object.keys(nextErrors).length > 0) {
+    if (Object.keys(nextErrors).length > 0 || !onAddEvent) {
       setErrors(nextErrors);
       setSubmitMessage("");
-
-      if (nextErrors.title) {
-        titleInputRef.current?.focus();
-      } else if (nextErrors.detail) {
-        detailTextareaRef.current?.focus();
-      }
-
+      focusFirstError(nextErrors);
       return;
     }
 
@@ -155,114 +146,68 @@ function StreamEventTimeline({
       phase,
     });
 
-    setTitle("");
-    setDetail("");
-    setPhase("current");
-    setErrors({});
+    clearForm(false);
     setSubmitMessage("event を追加しました。");
-    titleInputRef.current?.focus();
+    requestAnimationFrame(() => {
+      titleInputRef.current?.focus();
+    });
   };
 
   const handleDetailKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && canSubmit) {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
       event.preventDefault();
-      formRef.current?.requestSubmit();
+
+      const form = event.currentTarget.form;
+      if (form) {
+        form.requestSubmit();
+      }
     }
   };
 
-  const handleConfirmRemove = (item: StreamEventItem) => {
+  const handleRemoveEvent = (item: StreamEventItem) => {
     if (!onRemoveEvent || !item.id) {
       return;
     }
 
-    const accepted = window.confirm(
-      `「${item.title}」をタイムラインから削除しますか？`
+    const shouldRemove = window.confirm(
+      `Remove event "${item.title}"?`,
     );
 
-    if (!accepted) {
+    if (!shouldRemove) {
       return;
     }
 
     onRemoveEvent(item.id);
-
-    if (editingEventId === item.id) {
-      setEditingEventId(null);
-      setEditingErrors({});
-    }
   };
 
-  const handleConfirmReset = () => {
+  const handleResetEvents = () => {
     if (!onResetEvents) {
       return;
     }
 
-    const accepted = window.confirm(
-      "ストリームの一覧と表示状態を初期状態へ戻します。続行しますか？"
+    const shouldReset = window.confirm(
+      "Reset all timeline events?",
     );
 
-    if (!accepted) {
+    if (!shouldReset) {
       return;
     }
 
     onResetEvents();
-    setEditingEventId(null);
-    setEditingErrors({});
-  };
-
-  const handleStartEdit = (item: StreamEventItem) => {
-    if (!item.id) {
-      return;
-    }
-
-    setEditingEventId(item.id);
-    setEditingTitle(item.title);
-    setEditingDetail(item.detail);
-    setEditingPhase(item.phase);
-    setEditingErrors({});
-  };
-
-  const handleCancelEdit = () => {
-    setEditingEventId(null);
-    setEditingErrors({});
-  };
-
-  const handleSaveEdit = (item: StreamEventItem) => {
-    if (!item.id || !onUpdateEvent) {
-      return;
-    }
-
-    const nextErrors = validateStreamInput({
-      title: trimmedEditingTitle,
-      detail: trimmedEditingDetail,
-    });
-
-    if (Object.keys(nextErrors).length > 0) {
-      setEditingErrors(nextErrors);
-      return;
-    }
-
-    onUpdateEvent(item.id, {
-      title: trimmedEditingTitle,
-      detail: trimmedEditingDetail,
-      phase: editingPhase,
-    });
-
-    setEditingEventId(null);
-    setEditingErrors({});
   };
 
   return (
-    <DashboardPanel title="Stream Timeline">
+    <DashboardPanel title="Activity Timeline">
       {(onAddEvent || onResetEvents) && (
         <div
           style={{
             display: "grid",
             gap: "12px",
+            marginBottom: "16px",
           }}
         >
           {onAddEvent && (
             <form
-              ref={formRef}
               onSubmit={handleSubmit}
               style={{
                 display: "grid",
@@ -276,7 +221,7 @@ function StreamEventTimeline({
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
                   gap: "10px",
                 }}
               >
@@ -450,300 +395,128 @@ function StreamEventTimeline({
                 justifyContent: "flex-end",
               }}
             >
-              <DashboardActionButton
-                label="reset stream"
-                onClick={handleConfirmReset}
-              />
+              <DashboardActionButton label="reset" onClick={handleResetEvents} />
             </div>
           )}
         </div>
       )}
 
-      {items.length === 0 ? (
-        <article
-          style={{
-            padding: "16px 18px",
-            borderRadius: "14px",
-            background: "#f8fafc",
-            border: "1px solid #e2e8f0",
-            boxShadow: "0 4px 10px rgba(15, 23, 42, 0.03)",
-          }}
-        >
-          <p
-            style={{
-              margin: "0 0 6px 0",
-              fontSize: "11px",
-              fontWeight: 700,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              color: "#64748b",
-            }}
-          >
-            Empty Result
-          </p>
-          <p
-            style={{
-              margin: 0,
-              fontSize: "14px",
-              lineHeight: 1.7,
-              color: "#334155",
-              fontWeight: 500,
-            }}
-          >
-            現在の filter 条件に一致するイベントはありません。
-          </p>
-        </article>
-      ) : (
-        <div
-          style={{
-            display: "grid",
-            gap: "12px",
-          }}
-        >
-          {items.map((item, index) => {
-            const phaseStyle = phaseStyles[item.phase];
-            const isEditing = editingEventId === item.id;
+      <div
+        style={{
+          display: "grid",
+          gap: "12px",
+        }}
+      >
+        {items.map((item, index) => {
+          const phaseStyle = phaseStyles[item.phase];
 
-            return (
-              <article
-                key={item.id ?? `${item.title}-${index}`}
+          return (
+            <article
+              key={item.id ?? `${item.title}-${index}`}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "28px 1fr",
+                gap: "12px",
+                alignItems: "start",
+              }}
+            >
+              <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "28px 1fr",
-                  gap: "12px",
-                  alignItems: "start",
+                  justifyItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <span
+                  style={{
+                    width: "12px",
+                    height: "12px",
+                    borderRadius: "999px",
+                    background: phaseStyle.color,
+                    marginTop: "6px",
+                  }}
+                />
+                {index !== items.length - 1 && (
+                  <span
+                    style={{
+                      width: "2px",
+                      height: "100%",
+                      minHeight: "52px",
+                      background: "#e5e7eb",
+                      display: "block",
+                    }}
+                  />
+                )}
+              </div>
+
+              <div
+                style={{
+                  padding: "14px",
+                  borderRadius: "12px",
+                  background: "#ffffff",
+                  border: "1px solid #e5e7eb",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+                  display: "grid",
+                  gap: "8px",
                 }}
               >
                 <div
                   style={{
-                    display: "grid",
-                    justifyItems: "center",
-                    gap: "6px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "8px",
+                    flexWrap: "wrap",
                   }}
                 >
-                  <span
+                  <h4
                     style={{
-                      width: "12px",
-                      height: "12px",
-                      borderRadius: "999px",
-                      background: phaseStyle.color,
-                      marginTop: "6px",
+                      margin: 0,
+                      fontSize: "15px",
+                      color: "#111827",
                     }}
-                  />
-                  {index !== items.length - 1 && (
-                    <span
-                      style={{
-                        width: "2px",
-                        height: "100%",
-                        minHeight: "52px",
-                        background: "#e5e7eb",
-                        display: "block",
-                      }}
-                    />
-                  )}
-                </div>
+                  >
+                    {item.title}
+                  </h4>
 
-                <div
-                  style={{
-                    padding: "14px 16px",
-                    borderRadius: "10px",
-                    background: phaseStyle.background,
-                    border: `1px solid ${phaseStyle.border}`,
-                  }}
-                >
                   <div
                     style={{
                       display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      gap: "12px",
+                      alignItems: "center",
+                      gap: "8px",
                       flexWrap: "wrap",
                     }}
                   >
-                    <h3
-                      style={{
-                        margin: 0,
-                        fontSize: "16px",
-                        color: "#111827",
-                      }}
-                    >
-                      {isEditing ? "Editing Event" : item.title}
-                    </h3>
+                    <DashboardBadge
+                      label={item.phase}
+                      color={phaseStyle.color}
+                      background={phaseStyle.background}
+                    />
 
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <DashboardBadge
-                        label={isEditing ? editingPhase : item.phase}
-                        color={phaseStyle.color}
-                        background="#ffffff"
-                        borderColor={phaseStyle.border}
+                    {onRemoveEvent && item.id && (
+                      <DashboardActionButton
+                        label="remove"
+                        onClick={() => handleRemoveEvent(item)}
                       />
-
-                      {isEditing ? (
-                        <>
-                          <DashboardActionButton
-                            label="save"
-                            onClick={() => handleSaveEdit(item)}
-                          />
-                          <DashboardActionButton
-                            label="cancel"
-                            onClick={handleCancelEdit}
-                          />
-                        </>
-                      ) : (
-                        <>
-                          {onUpdateEvent && item.id && (
-                            <DashboardActionButton
-                              label="edit"
-                              onClick={() => handleStartEdit(item)}
-                            />
-                          )}
-                          {onRemoveEvent && item.id && (
-                            <DashboardActionButton
-                              label="remove"
-                              onClick={() => handleConfirmRemove(item)}
-                            />
-                          )}
-                        </>
-                      )}
-                    </div>
+                    )}
                   </div>
-
-                  {isEditing ? (
-                    <div
-                      style={{
-                        display: "grid",
-                        gap: "10px",
-                        marginTop: "10px",
-                      }}
-                    >
-                      <div>
-                        <input
-                          type="text"
-                          value={editingTitle}
-                          maxLength={TITLE_MAX_LENGTH}
-                          onChange={(event) => {
-                            setEditingTitle(event.target.value);
-                            setEditingErrors((current) => ({
-                              ...current,
-                              title: undefined,
-                            }));
-                          }}
-                          placeholder="title"
-                          style={{
-                            width: "100%",
-                            padding: "10px 12px",
-                            borderRadius: "10px",
-                            border: editingErrors.title
-                              ? "1px solid #dc2626"
-                              : "1px solid #d1d5db",
-                            background: "#ffffff",
-                            color: "#111827",
-                            fontSize: "14px",
-                            boxSizing: "border-box",
-                          }}
-                        />
-                        {editingErrors.title && (
-                          <p
-                            style={{
-                              margin: "6px 0 0 0",
-                              color: "#b91c1c",
-                              fontSize: "12px",
-                              lineHeight: 1.5,
-                            }}
-                          >
-                            {editingErrors.title}
-                          </p>
-                        )}
-                      </div>
-
-                      <select
-                        value={editingPhase}
-                        onChange={(event) =>
-                          setEditingPhase(event.target.value as StreamEvent["phase"])
-                        }
-                        style={{
-                          width: "100%",
-                          padding: "10px 12px",
-                          borderRadius: "10px",
-                          border: "1px solid #d1d5db",
-                          background: "#ffffff",
-                          color: "#111827",
-                          fontSize: "14px",
-                          boxSizing: "border-box",
-                        }}
-                      >
-                        <option value="done">done</option>
-                        <option value="current">current</option>
-                        <option value="next">next</option>
-                      </select>
-
-                      <div>
-                        <textarea
-                          value={editingDetail}
-                          maxLength={DETAIL_MAX_LENGTH}
-                          onChange={(event) => {
-                            setEditingDetail(event.target.value);
-                            setEditingErrors((current) => ({
-                              ...current,
-                              detail: undefined,
-                            }));
-                          }}
-                          placeholder="detail"
-                          rows={4}
-                          style={{
-                            width: "100%",
-                            padding: "10px 12px",
-                            borderRadius: "10px",
-                            border: editingErrors.detail
-                              ? "1px solid #dc2626"
-                              : "1px solid #d1d5db",
-                            background: "#ffffff",
-                            color: "#111827",
-                            fontSize: "14px",
-                            boxSizing: "border-box",
-                            resize: "vertical",
-                            fontFamily: "inherit",
-                          }}
-                        />
-                        {editingErrors.detail && (
-                          <p
-                            style={{
-                              margin: "6px 0 0 0",
-                              color: "#b91c1c",
-                              fontSize: "12px",
-                              lineHeight: 1.5,
-                            }}
-                          >
-                            {editingErrors.detail}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <p
-                      style={{
-                        margin: "10px 0 0 0",
-                        color: "#374151",
-                        lineHeight: 1.7,
-                        fontSize: "14px",
-                      }}
-                    >
-                      {item.detail}
-                    </p>
-                  )}
                 </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
+
+                <p
+                  style={{
+                    margin: 0,
+                    color: "#4b5563",
+                    lineHeight: 1.7,
+                    fontSize: "14px",
+                  }}
+                >
+                  {item.detail}
+                </p>
+              </div>
+            </article>
+          );
+        })}
+      </div>
     </DashboardPanel>
   );
 }
