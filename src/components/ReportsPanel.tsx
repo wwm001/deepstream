@@ -70,7 +70,16 @@ const defaultPronunciationDictionaries: PronunciationDictionaryByLanguage = {
     { source: "TTS", target: "ティーティーエス" },
     { source: "UI", target: "ユーアイ" },
   ],
-  en: [],
+  en: [
+    { source: "DeepStream", target: "Deep Stream" },
+    { source: "READ", target: "read" },
+    { source: "MVP", target: "M V P" },
+    { source: "TTS", target: "T T S" },
+    { source: "UI", target: "U I" },
+    { source: "UX", target: "U X" },
+    { source: "API", target: "A P I" },
+    { source: "QA", target: "Q A" },
+  ],
 };
 
 const defaultVoiceSelections: VoiceSelectionsByLanguage = {
@@ -251,7 +260,7 @@ function readStoredPronunciationDictionaries(): PronunciationDictionaryByLanguag
   };
 }
 
-function readStoredReaderLanguage() {
+function readStoredReaderLanguage(): ReaderLanguage {
   const parsed = readStorageJSON<unknown>(
     REPORT_READER_LANGUAGE_STORAGE_KEY,
     DASHBOARD_STORAGE_NAMESPACE,
@@ -261,6 +270,17 @@ function readStoredReaderLanguage() {
   return isReaderLanguage(parsed) ? parsed : "ja";
 }
 
+function normalizeVoiceSelections(value: unknown): VoiceSelectionsByLanguage {
+  if (!isRecord(value)) {
+    return defaultVoiceSelections;
+  }
+
+  return {
+    ja: typeof value.ja === "string" ? value.ja : defaultVoiceSelections.ja,
+    en: typeof value.en === "string" ? value.en : defaultVoiceSelections.en,
+  };
+}
+
 function readStoredVoiceSelections(): VoiceSelectionsByLanguage {
   const parsed = readStorageJSON<unknown>(
     REPORT_READER_VOICE_SELECTIONS_STORAGE_KEY,
@@ -268,13 +288,28 @@ function readStoredVoiceSelections(): VoiceSelectionsByLanguage {
     defaultVoiceSelections
   );
 
-  if (!isRecord(parsed)) {
-    return defaultVoiceSelections;
+  if (typeof parsed === "string") {
+    return {
+      ja: parsed,
+      en: "",
+    };
+  }
+
+  return normalizeVoiceSelections(parsed);
+}
+
+function normalizePlaybackRates(value: unknown): PlaybackRatesByLanguage {
+  if (!isRecord(value)) {
+    return defaultPlaybackRatesByLanguage;
   }
 
   return {
-    ja: typeof parsed.ja === "string" ? parsed.ja : "",
-    en: typeof parsed.en === "string" ? parsed.en : "",
+    ja: isValidPlaybackRate(value.ja)
+      ? value.ja
+      : defaultPlaybackRatesByLanguage.ja,
+    en: isValidPlaybackRate(value.en)
+      ? value.en
+      : defaultPlaybackRatesByLanguage.en,
   };
 }
 
@@ -285,25 +320,14 @@ function readStoredPlaybackRates(): PlaybackRatesByLanguage {
     defaultPlaybackRatesByLanguage
   );
 
-  if (typeof parsed === "number" && isValidPlaybackRate(parsed)) {
+  if (isValidPlaybackRate(parsed)) {
     return {
       ja: parsed,
       en: defaultPlaybackRatesByLanguage.en,
     };
   }
 
-  if (!isRecord(parsed)) {
-    return defaultPlaybackRatesByLanguage;
-  }
-
-  return {
-    ja: isValidPlaybackRate(parsed.ja)
-      ? parsed.ja
-      : defaultPlaybackRatesByLanguage.ja,
-    en: isValidPlaybackRate(parsed.en)
-      ? parsed.en
-      : defaultPlaybackRatesByLanguage.en,
-  };
+  return normalizePlaybackRates(parsed);
 }
 
 function escapeRegExp(value: string) {
@@ -320,87 +344,61 @@ function applyPronunciationDictionary(
   }, text);
 }
 
+function sortVoices(voices: SpeechSynthesisVoice[]) {
+  return [...voices].sort((a, b) => {
+    const langComparison = a.lang.localeCompare(b.lang);
+    if (langComparison !== 0) {
+      return langComparison;
+    }
+    return a.name.localeCompare(b.name);
+  });
+}
+
 function formatVoiceLabel(voice: SpeechSynthesisVoice) {
-  const parts = [voice.name, voice.lang];
-
-  if (voice.localService) {
-    parts.push("local");
+  const parts = [voice.name];
+  if (voice.lang) {
+    parts.push(voice.lang);
   }
-
   if (voice.default) {
     parts.push("default");
   }
-
-  return parts.filter(Boolean).join(" / ");
-}
-
-function sortVoices(voices: SpeechSynthesisVoice[]) {
-  return [...voices].sort((left, right) => {
-    const leftIsJapanese = left.lang.toLowerCase().startsWith("ja");
-    const rightIsJapanese = right.lang.toLowerCase().startsWith("ja");
-
-    if (leftIsJapanese !== rightIsJapanese) {
-      return leftIsJapanese ? -1 : 1;
-    }
-
-    const leftIsEnglish = left.lang.toLowerCase().startsWith("en");
-    const rightIsEnglish = right.lang.toLowerCase().startsWith("en");
-
-    if (leftIsEnglish !== rightIsEnglish) {
-      return leftIsEnglish ? -1 : 1;
-    }
-
-    if (left.localService !== right.localService) {
-      return left.localService ? -1 : 1;
-    }
-
-    if (left.default !== right.default) {
-      return left.default ? -1 : 1;
-    }
-
-    return left.name.localeCompare(right.name, undefined, {
-      sensitivity: "base",
-    });
-  });
+  return parts.join(" / ");
 }
 
 function voiceMatchesLanguage(
   voice: SpeechSynthesisVoice,
   language: ReaderLanguage
 ) {
-  const normalizedLang = voice.lang.toLowerCase();
+  const lang = voice.lang.toLowerCase();
 
   if (language === "ja") {
-    return normalizedLang.startsWith("ja");
+    return lang.startsWith("ja");
   }
 
-  return normalizedLang.startsWith("en");
-}
+  if (language === "en") {
+    return lang.startsWith("en");
+  }
 
-function getFallbackUtteranceLang(language: ReaderLanguage) {
-  return (
-    readerLanguageOptions.find((option) => option.value === language)
-      ?.fallbackUtteranceLang ?? "ja-JP"
-  );
+  return false;
 }
 
 function getLanguageLabel(language: ReaderLanguage) {
   return (
     readerLanguageOptions.find((option) => option.value === language)?.label ??
-    "日本語"
+    language
   );
 }
 
 function getDetectionConfidenceLabel(confidence: DetectionConfidence) {
   if (confidence === "high") {
-    return "high";
+    return "high confidence";
   }
 
   if (confidence === "medium") {
-    return "medium";
+    return "medium confidence";
   }
 
-  return "low";
+  return "low confidence";
 }
 
 function detectReaderLanguageFromReport(
@@ -416,57 +414,59 @@ function detectReaderLanguageFromReport(
     return null;
   }
 
-  const japaneseChars =
-    text.match(/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/g)?.length ?? 0;
-  const englishLetters = text.match(/[A-Za-z]/g)?.length ?? 0;
-  const englishWords =
-    text.match(/\b[A-Za-z][A-Za-z'-]{1,}\b/g)?.length ?? 0;
+  const hiraganaMatches = text.match(/[\u3040-\u309f]/g) ?? [];
+  const katakanaMatches = text.match(/[\u30a0-\u30ff]/g) ?? [];
+  const kanjiMatches = text.match(/[\u4e00-\u9fff]/g) ?? [];
+  const latinWordMatches =
+    text.match(/[A-Za-z]+(?:['’-][A-Za-z]+)*/g) ?? [];
+  const asciiLetterMatches = text.match(/[A-Za-z]/g) ?? [];
 
-  if (japaneseChars >= 12 && japaneseChars >= englishLetters * 0.4) {
+  const japaneseScore =
+    hiraganaMatches.length * 3 +
+    katakanaMatches.length * 2 +
+    kanjiMatches.length * 1.5;
+  const englishScore =
+    latinWordMatches.length * 2 + asciiLetterMatches.length * 0.25;
+
+  if (japaneseScore === 0 && englishScore === 0) {
+    return null;
+  }
+
+  if (japaneseScore >= englishScore * 1.5 && japaneseScore >= 12) {
     return {
       language: "ja",
-      confidence: "high",
-      reason: `日本語文字が多く検出されました (${japaneseChars} chars)。`,
+      confidence:
+        japaneseScore >= englishScore * 3 ? "high" : "medium",
+      reason:
+        "ひらがな・カタカナ・漢字の比率が高いため、日本語読み上げを優先します。",
     };
   }
 
-  if (englishWords >= 10 && japaneseChars <= 6) {
+  if (englishScore >= japaneseScore * 1.5 && englishScore >= 12) {
     return {
       language: "en",
-      confidence: "high",
-      reason: `英単語が多く検出されました (${englishWords} words)。`,
+      confidence:
+        englishScore >= japaneseScore * 3 ? "high" : "medium",
+      reason:
+        "英単語とアルファベットの比率が高いため、英語読み上げを優先します。",
     };
   }
 
-  if (japaneseChars >= 6 && japaneseChars > englishLetters) {
-    return {
-      language: "ja",
-      confidence: "medium",
-      reason: `日本語文字が英字より優勢です (${japaneseChars} vs ${englishLetters})。`,
-    };
-  }
-
-  if (englishWords >= 5 && englishLetters > japaneseChars * 2) {
-    return {
-      language: "en",
-      confidence: "medium",
-      reason: `英字と英単語が優勢です (${englishWords} words)。`,
-    };
-  }
-
-  if (japaneseChars > 0 && englishWords === 0) {
+  if (japaneseScore > englishScore) {
     return {
       language: "ja",
       confidence: "low",
-      reason: "日本語文字が検出され、英単語はほぼ見当たりません。",
+      reason:
+        "日本語要素がやや多いため、初期値を日本語へ寄せています。",
     };
   }
 
-  if (englishWords >= 3 && japaneseChars === 0) {
+  if (englishScore > japaneseScore) {
     return {
       language: "en",
       confidence: "low",
-      reason: "英単語が検出され、日本語文字は見当たりません。",
+      reason:
+        "英語要素がやや多いため、初期値を English へ寄せています。",
     };
   }
 
@@ -479,8 +479,15 @@ function ReportsPanel({
   onSelectReport,
   onCycleReportStatus,
 }: ReportsPanelProps) {
+  const [selectedReaderLanguage, setSelectedReaderLanguage] =
+    useState<ReaderLanguage>(() => readStoredReaderLanguage());
+  const [selectedVoiceSelections, setSelectedVoiceSelections] =
+    useState<VoiceSelectionsByLanguage>(() => readStoredVoiceSelections());
   const [selectedPlaybackRates, setSelectedPlaybackRates] =
     useState<PlaybackRatesByLanguage>(() => readStoredPlaybackRates());
+  const [availableVoices, setAvailableVoices] = useState<
+    SpeechSynthesisVoice[]
+  >([]);
   const [isReading, setIsReading] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [readingReportId, setReadingReportId] = useState<string | null>(null);
@@ -503,34 +510,38 @@ function ReportsPanel({
   const [editingDictionarySource, setEditingDictionarySource] = useState("");
   const [editingDictionaryTarget, setEditingDictionaryTarget] = useState("");
 
-  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>(
-    []
-  );
-  const [selectedReaderLanguage, setSelectedReaderLanguage] =
-    useState<ReaderLanguage>(() => readStoredReaderLanguage());
-  const [selectedVoiceSelections, setSelectedVoiceSelections] =
-    useState<VoiceSelectionsByLanguage>(() => readStoredVoiceSelections());
-
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const segmentQueueRef = useRef<ReportSegment[]>([]);
-  const activeReportIdRef = useRef<string | null>(null);
-  const playbackSessionIdRef = useRef(0);
-  const pronunciationDictionariesRef = useRef<PronunciationDictionaryByLanguage>(
-    pronunciationDictionaries
-  );
   const selectedVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
-  const selectedReaderLanguageRef = useRef<ReaderLanguage>(
-    selectedReaderLanguage
-  );
+  const selectedReaderLanguageRef =
+    useRef<ReaderLanguage>(selectedReaderLanguage);
   const playbackRateRef = useRef<ReaderPlaybackRate>(
     selectedPlaybackRates[selectedReaderLanguage]
   );
+  const pronunciationDictionaryRef = useRef<PronunciationEntry[]>(
+    pronunciationDictionaries[selectedReaderLanguage]
+  );
+  const segmentQueueRef = useRef<ReportSegment[]>([]);
+  const activeReportIdRef = useRef<string | null>(null);
+  const playbackSessionIdRef = useRef(0);
   const autoDetectedReportIdRef = useRef<string | null>(null);
 
   const speechSupported =
     typeof window !== "undefined" && "speechSynthesis" in window;
 
   const playbackRate = selectedPlaybackRates[selectedReaderLanguage];
+
+  useEffect(() => {
+    pronunciationDictionaryRef.current =
+      pronunciationDictionaries[selectedReaderLanguage] ?? [];
+  }, [pronunciationDictionaries, selectedReaderLanguage]);
+
+  useEffect(() => {
+    writeStorageJSON(
+      PRONUNCIATION_DICTIONARY_STORAGE_KEY,
+      pronunciationDictionaries,
+      DASHBOARD_STORAGE_NAMESPACE
+    );
+  }, [pronunciationDictionaries]);
 
   const filteredItems = useMemo(() => {
     const normalizedSearchTerm = searchTerm.trim().toLowerCase();
@@ -614,15 +625,24 @@ function ReportsPanel({
     [items]
   );
 
-  useEffect(() => {
-    pronunciationDictionariesRef.current = pronunciationDictionaries;
+  const resetDictionaryInputs = () => {
+    setDictionarySourceInput("");
+    setDictionaryTargetInput("");
+  };
 
-    writeStorageJSON(
-      PRONUNCIATION_DICTIONARY_STORAGE_KEY,
-      pronunciationDictionaries,
-      DASHBOARD_STORAGE_NAMESPACE
-    );
-  }, [pronunciationDictionaries]);
+  const cancelDictionaryEditing = () => {
+    setEditingDictionaryKey(null);
+    setEditingDictionarySource("");
+    setEditingDictionaryTarget("");
+  };
+
+  const applyDetectedLanguageSuggestion = () => {
+    if (!detectedLanguageSuggestion) {
+      return;
+    }
+
+    setSelectedReaderLanguage(detectedLanguageSuggestion.language);
+  };
 
   useEffect(() => {
     writeStorageJSON(
@@ -785,8 +805,7 @@ function ReportsPanel({
       return;
     }
 
-    setDictionarySourceInput("");
-    setDictionaryTargetInput("");
+    resetDictionaryInputs();
   };
 
   const handleDictionaryEditSave = () => {
@@ -804,9 +823,7 @@ function ReportsPanel({
       return;
     }
 
-    setEditingDictionaryKey(null);
-    setEditingDictionarySource("");
-    setEditingDictionaryTarget("");
+    cancelDictionaryEditing();
   };
 
   const handleDictionaryRemove = (entry: PronunciationEntry) => {
@@ -836,14 +853,6 @@ function ReportsPanel({
     }
 
     setDictionaryError(null);
-  };
-
-  const applyDetectedLanguageSuggestion = () => {
-    if (!detectedLanguageSuggestion) {
-      return;
-    }
-
-    setSelectedReaderLanguage(detectedLanguageSuggestion.language);
   };
 
   const finishReading = (sessionId?: number) => {
@@ -885,20 +894,18 @@ function ReportsPanel({
       return;
     }
 
-    const activeVoice = selectedVoiceRef.current;
-    const activeLanguage = selectedReaderLanguageRef.current;
-    const activeDictionary =
-      pronunciationDictionariesRef.current[activeLanguage] ?? [];
-
     const utterance = new SpeechSynthesisUtterance(
-      applyPronunciationDictionary(segment.text, activeDictionary)
+      applyPronunciationDictionary(segment.text, pronunciationDictionaryRef.current)
     );
-
     utterance.rate = playbackRateRef.current;
-    utterance.lang = activeVoice?.lang || getFallbackUtteranceLang(activeLanguage);
+    utterance.lang =
+      readerLanguageOptions.find(
+        (option) => option.value === selectedReaderLanguageRef.current
+      )?.fallbackUtteranceLang ?? "ja-JP";
 
-    if (activeVoice) {
-      utterance.voice = activeVoice;
+    if (selectedVoiceRef.current) {
+      utterance.voice = selectedVoiceRef.current;
+      utterance.lang = selectedVoiceRef.current.lang;
     }
 
     utterance.onstart = () => {
@@ -1086,6 +1093,36 @@ function ReportsPanel({
     ? getDetectionConfidenceLabel(detectedLanguageSuggestion.confidence)
     : null;
 
+  const selectedReportStatusLabel = !speechSupported
+    ? "speech unavailable"
+    : selectedReport
+      ? `selected report: ${selectedReport.title}`
+      : "selected report ready";
+
+  const readerSummaryItems: Array<{
+    label: string;
+    value: string;
+    wide?: boolean;
+  }> = [
+    {
+      label: "language",
+      value: currentLanguageLabel,
+    },
+    {
+      label: "voice",
+      value: voiceStatusLabel,
+      wide: true,
+    },
+    {
+      label: "speed",
+      value: `${playbackRate.toFixed(1)}x`,
+    },
+    {
+      label: "dictionary",
+      value: `${activePronunciationDictionary.length} entries`,
+    },
+  ];
+
   const isDetectedLanguageDifferent =
     Boolean(detectedLanguageSuggestion) &&
     detectedLanguageSuggestion?.language !== selectedReaderLanguage;
@@ -1187,62 +1224,68 @@ function ReportsPanel({
                 fontSize: "12px",
                 lineHeight: 1.5,
                 color: "#64748b",
+                wordBreak: "break-word",
               }}
             >
-              {!speechSupported
-                ? "このブラウザでは読み上げを利用できません"
-                : selectedReport
-                  ? `selected report: ${selectedReport.title}`
-                  : "selected report ready"}
+              {selectedReportStatusLabel}
             </span>
           </div>
 
-          <p
+          <div
             style={{
-              margin: 0,
-              fontSize: "12px",
-              lineHeight: 1.6,
-              color: "#64748b",
+              display: "flex",
+              alignItems: "stretch",
+              gap: "8px",
+              flexWrap: "wrap",
             }}
           >
-            pronunciation dictionary active: {activePronunciationDictionary.length}{" "}
-            entries for {currentLanguageLabel}
-          </p>
+            {readerSummaryItems.map((item) => {
+              const isWide = item.wide === true;
 
-          <p
-            style={{
-              margin: 0,
-              fontSize: "12px",
-              lineHeight: 1.6,
-              color: "#64748b",
-              wordBreak: "break-word",
-            }}
-          >
-            language: {currentLanguageLabel}
-          </p>
-
-          <p
-            style={{
-              margin: 0,
-              fontSize: "12px",
-              lineHeight: 1.6,
-              color: "#64748b",
-              wordBreak: "break-word",
-            }}
-          >
-            voice: {voiceStatusLabel}
-          </p>
-
-          <p
-            style={{
-              margin: 0,
-              fontSize: "12px",
-              lineHeight: 1.6,
-              color: "#64748b",
-            }}
-          >
-            speed: {playbackRate.toFixed(1)}x for {currentLanguageLabel}
-          </p>
+              return (
+                <div
+                  key={item.label}
+                  style={{
+                    display: "grid",
+                    gap: "2px",
+                    minWidth: isWide ? "220px" : "120px",
+                    maxWidth: isWide ? "min(360px, 100%)" : "180px",
+                    padding: "8px 10px",
+                    borderRadius: "12px",
+                    border: "1px solid #e2e8f0",
+                    background: "rgba(255, 255, 255, 0.88)",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: "10px",
+                      lineHeight: 1.4,
+                      fontWeight: 700,
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      color: "#64748b",
+                    }}
+                  >
+                    {item.label}
+                  </span>
+                  <span
+                    title={item.value}
+                    style={{
+                      fontSize: "12px",
+                      lineHeight: 1.5,
+                      color: "#0f172a",
+                      fontWeight: 600,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {item.value}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
 
           {detectedLanguageSuggestion ? (
             <div
@@ -1256,16 +1299,42 @@ function ReportsPanel({
                 background: "#f8fbff",
               }}
             >
-              <p
+              <div
                 style={{
-                  margin: 0,
-                  fontSize: "12px",
-                  lineHeight: 1.6,
-                  color: "#1e3a8a",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  flexWrap: "wrap",
                 }}
               >
-                auto-detect: {detectedLanguageLabel} / {detectedConfidenceLabel}
-              </p>
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    padding: "4px 8px",
+                    borderRadius: "999px",
+                    border: "1px solid #bfdbfe",
+                    background: "#eff6ff",
+                    color: "#1d4ed8",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    letterSpacing: "0.04em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  auto-detect
+                </span>
+                <span
+                  style={{
+                    fontSize: "12px",
+                    lineHeight: 1.6,
+                    color: "#1e3a8a",
+                    fontWeight: 700,
+                  }}
+                >
+                  {detectedLanguageLabel} / {detectedConfidenceLabel}
+                </span>
+              </div>
 
               <p
                 style={{
@@ -1278,7 +1347,7 @@ function ReportsPanel({
                 {detectedLanguageSuggestion.reason}
               </p>
 
-              {isDetectedLanguageDifferent && (
+              {isDetectedLanguageDifferent ? (
                 <div>
                   <button
                     type="button"
@@ -1295,22 +1364,58 @@ function ReportsPanel({
                       cursor: "pointer",
                     }}
                   >
-                    use detected language ({detectedLanguageLabel})
+                    switch to detected language ({detectedLanguageLabel})
                   </button>
                 </div>
+              ) : (
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "12px",
+                    lineHeight: 1.6,
+                    color: "#1d4ed8",
+                    fontWeight: 600,
+                  }}
+                >
+                  current language already matches the detected suggestion.
+                </p>
               )}
             </div>
           ) : (
-            <p
+            <div
               style={{
-                margin: 0,
-                fontSize: "12px",
-                lineHeight: 1.6,
-                color: "#94a3b8",
+                display: "grid",
+                gap: "6px",
+                marginTop: "4px",
+                padding: "10px 12px",
+                borderRadius: "12px",
+                border: "1px solid #e2e8f0",
+                background: "rgba(255, 255, 255, 0.72)",
               }}
             >
-              auto-detect: current report から言語を明確に判定できませんでした。
-            </p>
+              <span
+                style={{
+                  fontSize: "11px",
+                  lineHeight: 1.4,
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  color: "#64748b",
+                }}
+              >
+                auto-detect
+              </span>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "12px",
+                  lineHeight: 1.6,
+                  color: "#94a3b8",
+                }}
+              >
+                current report から言語を明確に判定できませんでした。
+              </p>
+            </div>
           )}
         </div>
 
@@ -1379,12 +1484,11 @@ function ReportsPanel({
               onChange={(event) =>
                 setSelectedReaderLanguage(event.target.value as ReaderLanguage)
               }
-              disabled={!speechSupported}
               style={{
                 padding: "8px 10px",
                 borderRadius: "10px",
                 border: "1px solid #d1d5db",
-                background: speechSupported ? "#ffffff" : "#f8fafc",
+                background: "#ffffff",
                 color: "#111827",
                 fontSize: "13px",
               }}
@@ -1407,7 +1511,7 @@ function ReportsPanel({
             </label>
 
             <select
-              value={selectedVoice ? selectedVoice.voiceURI : ""}
+              value={selectedVoiceURI}
               onChange={(event) => handleVoiceSelectionChange(event.target.value)}
               disabled={!speechSupported}
               style={{
@@ -1419,11 +1523,7 @@ function ReportsPanel({
                 fontSize: "13px",
               }}
             >
-              <option value="">
-                {filteredVoices.length === 0
-                  ? `no ${currentLanguageLabel} voice available`
-                  : `default ${currentLanguageLabel} voice`}
-              </option>
+              <option value="">default system voice</option>
               {filteredVoices.map((voice) => (
                 <option key={voice.voiceURI} value={voice.voiceURI}>
                   {formatVoiceLabel(voice)}
@@ -1706,7 +1806,7 @@ function ReportsPanel({
                               color: isPaused ? "#b45309" : "#047857",
                               fontSize: "10px",
                               fontWeight: 700,
-                              letterSpacing: "0.05em",
+                              letterSpacing: "0.04em",
                               textTransform: "uppercase",
                             }}
                           >
@@ -1716,7 +1816,7 @@ function ReportsPanel({
                                 width: "8px",
                                 height: "8px",
                                 borderRadius: "999px",
-                                background: isPaused ? "#f59e0b" : "#22c55e",
+                                background: isPaused ? "#f97316" : "#22c55e",
                               }}
                             />
                             {isPaused ? "paused" : "speaking"}
@@ -1736,16 +1836,41 @@ function ReportsPanel({
                         margin: 0,
                         fontSize: "13px",
                         lineHeight: 1.7,
-                        color: "#4b5563",
-                        minHeight: "54px",
-                        display: "-webkit-box",
-                        WebkitLineClamp: 3,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
+                        color: "#475569",
                       }}
                     >
                       {item.summary}
                     </p>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "12px",
+                        flexWrap: "wrap",
+                        marginTop: "auto",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          color: "#64748b",
+                        }}
+                      >
+                        {splitBodyParagraphs(item.body).length} paragraphs
+                      </span>
+
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          color: isSelected ? "#0891b2" : "#94a3b8",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {isSelected ? "selected" : "open"}
+                      </span>
+                    </div>
                   </button>
                 );
               })}
@@ -1773,259 +1898,325 @@ function ReportsPanel({
               style={{
                 display: "grid",
                 gap: "14px",
-                alignItems: "start",
               }}
             >
               <div
                 style={{
-                  minHeight: "42px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "10px",
-                  flexWrap: "wrap",
-                  padding: "10px 12px",
-                  borderRadius: "12px",
-                  border:
-                    isSelectedReportBeingRead
-                      ? `1px solid ${isPaused ? "#fdba74" : "#86efac"}`
-                      : "1px solid #e5e7eb",
-                  background:
-                    isSelectedReportBeingRead
-                      ? isPaused
-                        ? "#fff7ed"
-                        : "#f0fdf4"
-                      : "#f8fafc",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    letterSpacing: "0.05em",
-                    textTransform: "uppercase",
-                    color: isSelectedReportBeingRead
-                      ? isPaused
-                        ? "#b45309"
-                        : "#047857"
-                      : "#64748b",
-                  }}
-                >
-                  {isSelectedReportBeingRead
-                    ? isPaused
-                      ? "Reader paused"
-                      : "Reader speaking"
-                    : "Reader ready"}
-                </span>
-
-                <span
-                  style={{
-                    fontSize: "12px",
-                    color: "#64748b",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  {isSelectedReportBeingRead
-                    ? isPaused
-                      ? "現在のレポートを一時停止しています。"
-                      : currentSegment
-                        ? `現在は ${currentSegment.kind} を読み上げています。`
-                        : "現在のレポートを読み上げ中です。"
-                    : "選択中レポートを表示しています。"}
-                </span>
-              </div>
-
-              <section
-                role="button"
-                tabIndex={speechSupported ? 0 : -1}
-                onClick={() => startReadingFromSegment(0)}
-                onKeyDown={(event) => {
-                  if (!speechSupported) {
-                    return;
-                  }
-
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    startReadingFromSegment(0);
-                  }
-                }}
-                style={{
-                  minHeight: "88px",
-                  maxHeight: "88px",
                   display: "grid",
-                  gap: "6px",
-                  alignContent: "start",
-                  overflow: "hidden",
-                  padding: "10px 12px",
-                  borderRadius: "12px",
-                  border:
-                    isSelectedReportBeingRead && currentSegment?.kind === "title"
-                      ? `1px solid ${isPaused ? "#fdba74" : "#86efac"}`
-                      : "1px solid transparent",
-                  background:
-                    isSelectedReportBeingRead && currentSegment?.kind === "title"
-                      ? isPaused
-                        ? "#fff7ed"
-                        : "#f0fdf4"
-                      : "transparent",
-                  transition:
-                    "border-color 140ms ease, background 140ms ease",
-                  cursor: speechSupported ? "pointer" : "default",
+                  gap: "10px",
+                  padding: "16px",
+                  borderRadius: "14px",
+                  border: "1px solid #e5e7eb",
+                  background: "#f8fafc",
                 }}
               >
-                <h3
-                  style={{
-                    margin: 0,
-                    fontSize: "18px",
-                    color: "#111827",
-                    lineHeight: 1.35,
-                    display: "-webkit-box",
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
-                  }}
-                >
-                  {selectedReport.title}
-                </h3>
-
                 <div
                   style={{
-                    fontSize: "12px",
-                    color: "#6b7280",
-                    lineHeight: 1.6,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "start",
+                    gap: "10px",
+                    flexWrap: "wrap",
                   }}
                 >
-                  {selectedReport.source} ・ {selectedReport.createdAt}
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: "6px",
+                    }}
+                  >
+                    <h3
+                      style={{
+                        margin: 0,
+                        fontSize: "18px",
+                        lineHeight: 1.5,
+                        color: "#0f172a",
+                      }}
+                    >
+                      {selectedReport.title}
+                    </h3>
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: "12px",
+                        color: "#64748b",
+                      }}
+                    >
+                      {selectedReport.source} ・ {selectedReport.createdAt}
+                    </p>
+                  </div>
+
+                  <DashboardBadge
+                    label={statusStyles[selectedReport.status].label}
+                    color={statusStyles[selectedReport.status].color}
+                    background={statusStyles[selectedReport.status].background}
+                  />
                 </div>
-              </section>
 
-              <section
-                role="button"
-                tabIndex={speechSupported ? 0 : -1}
-                onClick={() => startReadingFromSegment(1)}
-                onKeyDown={(event) => {
-                  if (!speechSupported) {
-                    return;
-                  }
-
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    startReadingFromSegment(1);
-                  }
-                }}
-                style={{
-                  padding: "12px 14px",
-                  borderRadius: "12px",
-                  background:
-                    isSelectedReportBeingRead && currentSegment?.kind === "summary"
-                      ? isPaused
-                        ? "#fff7ed"
-                        : "#f0fdf4"
-                      : "#f9fafb",
-                  border:
-                    isSelectedReportBeingRead && currentSegment?.kind === "summary"
-                      ? `1px solid ${isPaused ? "#fdba74" : "#86efac"}`
-                      : "1px solid #e5e7eb",
-                  fontSize: "13px",
-                  lineHeight: 1.7,
-                  color: "#4b5563",
-                  minHeight: "88px",
-                  maxHeight: "88px",
-                  display: "flex",
-                  alignItems: "flex-start",
-                  overflow: "hidden",
-                  transition:
-                    "border-color 140ms ease, background 140ms ease",
-                  cursor: speechSupported ? "pointer" : "default",
-                }}
-              >
-                <span
+                <p
                   style={{
-                    display: "-webkit-box",
-                    WebkitLineClamp: 3,
-                    WebkitBoxOrient: "vertical",
-                    overflow: "hidden",
+                    margin: 0,
+                    fontSize: "14px",
+                    lineHeight: 1.8,
+                    color: "#475569",
                   }}
                 >
                   {selectedReport.summary}
-                </span>
-              </section>
+                </p>
+              </div>
 
-              <article
+              <div
                 style={{
                   display: "grid",
-                  gap: "12px",
+                  gap: "10px",
                 }}
               >
-                {selectedBodyParagraphs.map((paragraph, index) => {
-                  const segmentIndex = index + 2;
-                  const isActiveParagraph =
-                    isSelectedReportBeingRead &&
-                    currentSegment?.kind === "body" &&
-                    currentSegmentIndex === segmentIndex;
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: "12px",
+                    lineHeight: 1.6,
+                    color: "#64748b",
+                  }}
+                >
+                  title / summary / body の順で読み上げます。body paragraph を押すと、その段落から再生します。
+                </p>
 
-                  return (
-                    <section
-                      key={`${selectedReport.id}-paragraph-${index}`}
-                      role="button"
-                      tabIndex={speechSupported ? 0 : -1}
-                      onClick={() => startReadingFromSegment(segmentIndex)}
-                      onKeyDown={(event) => {
-                        if (!speechSupported) {
-                          return;
-                        }
-
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          startReadingFromSegment(segmentIndex);
-                        }
-                      }}
+                <div
+                  style={{
+                    display: "grid",
+                    gap: "12px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: "8px",
+                    }}
+                  >
+                    <div
                       style={{
-                        padding: "14px 16px",
-                        borderRadius: "12px",
-                        border: isActiveParagraph
-                          ? `1px solid ${isPaused ? "#fdba74" : "#86efac"}`
-                          : "1px solid #e5e7eb",
-                        background: isActiveParagraph
-                          ? isPaused
-                            ? "#fff7ed"
-                            : "#f0fdf4"
-                          : "#ffffff",
-                        color: "#111827",
-                        fontSize: "14px",
-                        lineHeight: 1.9,
-                        boxShadow: isActiveParagraph
-                          ? "0 0 0 3px rgba(34, 197, 94, 0.10)"
-                          : "none",
-                        transition:
-                          "border-color 140ms ease, background 140ms ease, box-shadow 140ms ease",
-                        cursor: speechSupported ? "pointer" : "default",
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: "#64748b",
                       }}
                     >
-                      {paragraph}
-                    </section>
-                  );
-                })}
-              </article>
+                      title
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => startReadingFromSegment(0)}
+                      style={{
+                        textAlign: "left",
+                        borderRadius: "12px",
+                        border:
+                          currentSegment?.kind === "title" &&
+                          isSelectedReportBeingRead
+                            ? "2px solid #22c55e"
+                            : "1px solid #e5e7eb",
+                        background:
+                          currentSegment?.kind === "title" &&
+                          isSelectedReportBeingRead
+                            ? "#f0fdf4"
+                            : "#ffffff",
+                        padding: "14px",
+                        cursor: "pointer",
+                        color: "#0f172a",
+                        fontSize: "15px",
+                        lineHeight: 1.7,
+                      }}
+                    >
+                      {selectedReport.title}
+                    </button>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: "8px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        color: "#64748b",
+                      }}
+                    >
+                      summary
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => startReadingFromSegment(1)}
+                      style={{
+                        textAlign: "left",
+                        borderRadius: "12px",
+                        border:
+                          currentSegment?.kind === "summary" &&
+                          isSelectedReportBeingRead
+                            ? "2px solid #22c55e"
+                            : "1px solid #e5e7eb",
+                        background:
+                          currentSegment?.kind === "summary" &&
+                          isSelectedReportBeingRead
+                            ? "#f0fdf4"
+                            : "#ffffff",
+                        padding: "14px",
+                        cursor: "pointer",
+                        color: "#334155",
+                        fontSize: "14px",
+                        lineHeight: 1.8,
+                      }}
+                    >
+                      {selectedReport.summary}
+                    </button>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: "8px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: "10px",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          letterSpacing: "0.06em",
+                          textTransform: "uppercase",
+                          color: "#64748b",
+                        }}
+                      >
+                        body paragraphs
+                      </div>
+
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          color: "#64748b",
+                        }}
+                      >
+                        {selectedBodyParagraphs.length} paragraphs
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gap: "10px",
+                      }}
+                    >
+                      {selectedBodyParagraphs.map((paragraph, index) => {
+                        const segmentIndex = index + 2;
+                        const isCurrentParagraph =
+                          isSelectedReportBeingRead &&
+                          currentSegment?.kind === "body" &&
+                          currentSegmentIndex === segmentIndex;
+
+                        return (
+                          <button
+                            key={`${selectedReport.id}-paragraph-${index}`}
+                            type="button"
+                            onClick={() => startReadingFromSegment(segmentIndex)}
+                            style={{
+                              textAlign: "left",
+                              borderRadius: "12px",
+                              border: isCurrentParagraph
+                                ? "2px solid #22c55e"
+                                : "1px solid #e5e7eb",
+                              background: isCurrentParagraph
+                                ? "#f0fdf4"
+                                : "#ffffff",
+                              padding: "14px",
+                              cursor: "pointer",
+                              display: "grid",
+                              gap: "8px",
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                gap: "10px",
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: "11px",
+                                  fontWeight: 700,
+                                  letterSpacing: "0.06em",
+                                  textTransform: "uppercase",
+                                  color: "#64748b",
+                                }}
+                              >
+                                paragraph {index + 1}
+                              </span>
+
+                              {isCurrentParagraph && (
+                                <span
+                                  style={{
+                                    fontSize: "11px",
+                                    fontWeight: 700,
+                                    color: "#16a34a",
+                                  }}
+                                >
+                                  now reading
+                                </span>
+                              )}
+                            </div>
+
+                            <span
+                              style={{
+                                fontSize: "14px",
+                                lineHeight: 1.85,
+                                color: "#334155",
+                                whiteSpace: "pre-wrap",
+                              }}
+                            >
+                              {paragraph}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : (
             <div
               style={{
-                color: "#6b7280",
+                padding: "18px 16px",
+                borderRadius: "12px",
+                border: "1px solid #e5e7eb",
+                background: "#ffffff",
                 fontSize: "14px",
                 lineHeight: 1.8,
+                color: "#6b7280",
               }}
             >
-              表示できるレポートがありません。
+              読み上げ対象のレポートを選択してください。
             </div>
           )}
         </DashboardPanel>
       </div>
 
-      <DashboardPanel title={`Pronunciation Dictionary (${currentLanguageLabel})`}>
+      <DashboardPanel title="Pronunciation Dictionary">
         <div
           style={{
             display: "grid",
@@ -2040,8 +2231,8 @@ function ReportsPanel({
               color: "#475569",
             }}
           >
-            現在選択中の {currentLanguageLabel} 用辞書を編集します。読み上げ直前に
-            source を target へ置換し、保存後は次の発話から即反映されます。
+            読み上げ直前に source を target へ置換します。現在は {currentLanguageLabel}
+            用の辞書を編集中です。
           </p>
 
           <div
@@ -2078,7 +2269,7 @@ function ReportsPanel({
                   value={dictionarySourceInput}
                   onChange={(event) => setDictionarySourceInput(event.target.value)}
                   placeholder={
-                    selectedReaderLanguage === "ja" ? "DeepStream" : "report queue"
+                    selectedReaderLanguage === "ja" ? "DeepStream" : "MVP"
                   }
                   style={{
                     width: "100%",
@@ -2110,7 +2301,7 @@ function ReportsPanel({
                   placeholder={
                     selectedReaderLanguage === "ja"
                       ? "ディープストリーム"
-                      : "report cue"
+                      : "M V P"
                   }
                   style={{
                     width: "100%",
@@ -2161,17 +2352,6 @@ function ReportsPanel({
             )}
           </div>
 
-          <p
-            style={{
-              margin: 0,
-              fontSize: "12px",
-              lineHeight: 1.6,
-              color: "#64748b",
-            }}
-          >
-            {activePronunciationDictionary.length} entries for {currentLanguageLabel}
-          </p>
-
           <div
             style={{
               display: "grid",
@@ -2188,7 +2368,7 @@ function ReportsPanel({
 
                 return (
                   <div
-                    key={entryKey}
+                    key={`${selectedReaderLanguage}-${entryKey}`}
                     style={{
                       display: "grid",
                       gap: "10px",
@@ -2296,12 +2476,7 @@ function ReportsPanel({
 
                           <button
                             type="button"
-                            onClick={() => {
-                              setEditingDictionaryKey(null);
-                              setEditingDictionarySource("");
-                              setEditingDictionaryTarget("");
-                              setDictionaryError(null);
-                            }}
+                            onClick={cancelDictionaryEditing}
                             style={{
                               height: "36px",
                               padding: "0 12px",
