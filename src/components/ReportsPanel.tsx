@@ -56,6 +56,22 @@ type ReaderSummaryItem = {
   wide?: boolean;
 };
 
+type ReaderTtsRequest = {
+  text: string;
+  language: ReaderLanguage;
+  rate: ReaderPlaybackRate;
+  dictionary: PronunciationEntry[];
+  voice: SpeechSynthesisVoice | null;
+};
+
+type ReaderProgressEntry = {
+  segmentIndex: number;
+  language: ReaderLanguage;
+  updatedAt: string;
+};
+
+type ReaderProgressByReport = Record<string, ReaderProgressEntry>;
+
 const playbackRates: ReaderPlaybackRate[] = [0.8, 1.0, 1.2, 1.5, 2.0];
 const reportFilters: ReportFilter[] = ["all", "new", "reading", "archived"];
 
@@ -86,6 +102,8 @@ const REPORT_READER_VOICE_SELECTIONS_STORAGE_KEY =
   "deepstream:report-reader-voice-selections";
 const REPORT_READER_PLAYBACK_RATES_STORAGE_KEY =
   "deepstream:report-reader-playback-rates";
+const REPORT_READER_PROGRESS_STORAGE_KEY =
+  "deepstream:report-reader-progress";
 
 function mapReaderLanguages<T>(
   mapper: (language: ReaderLanguage) => T
@@ -196,6 +214,17 @@ function isValidPlaybackRate(value: unknown): value is ReaderPlaybackRate {
   return (
     typeof value === "number" &&
     playbackRates.includes(value as ReaderPlaybackRate)
+  );
+}
+
+function isValidReaderProgressEntry(value: unknown): value is ReaderProgressEntry {
+  return (
+    isRecord(value) &&
+    typeof value.segmentIndex === "number" &&
+    Number.isInteger(value.segmentIndex) &&
+    value.segmentIndex >= 0 &&
+    isReaderLanguage(value.language) &&
+    typeof value.updatedAt === "string"
   );
 }
 
@@ -333,6 +362,30 @@ function readStoredPlaybackRates(): PlaybackRatesByLanguage {
   );
 }
 
+function readStoredReaderProgress(): ReaderProgressByReport {
+  const parsed = readStorageJSON<unknown>(
+    REPORT_READER_PROGRESS_STORAGE_KEY,
+    DASHBOARD_STORAGE_NAMESPACE,
+    {}
+  );
+
+  if (!isRecord(parsed)) {
+    return {};
+  }
+
+  const nextProgress: ReaderProgressByReport = {};
+
+  Object.entries(parsed).forEach(([reportId, value]) => {
+    if (!isValidReaderProgressEntry(value)) {
+      return;
+    }
+
+    nextProgress[reportId] = value;
+  });
+
+  return nextProgress;
+}
+
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -379,6 +432,22 @@ function voiceMatchesLanguage(
   return voice.lang
     .toLowerCase()
     .startsWith(readerLanguageConfigs[language].voiceLangPrefix);
+}
+
+function resolveSelectedVoiceForLanguage(params: {
+  availableVoices: SpeechSynthesisVoice[];
+  selectedVoiceSelections: VoiceSelectionsByLanguage;
+  language: ReaderLanguage;
+}) {
+  const { availableVoices, selectedVoiceSelections, language } = params;
+
+  return (
+    availableVoices.find(
+      (voice) =>
+        voice.voiceURI === selectedVoiceSelections[language] &&
+        voiceMatchesLanguage(voice, language)
+    ) ?? null
+  );
 }
 
 function getLanguageLabel(language: ReaderLanguage) {
@@ -469,6 +538,127 @@ function detectReaderLanguageFromReport(
   return null;
 }
 
+function resolveUtteranceLang(
+  language: ReaderLanguage,
+  voice: SpeechSynthesisVoice | null
+) {
+  if (voice?.lang) {
+    return voice.lang;
+  }
+
+  return readerLanguageConfigs[language].fallbackUtteranceLang;
+}
+
+function buildReaderSpeechText(
+  text: string,
+  dictionary: PronunciationEntry[]
+) {
+  return applyPronunciationDictionary(text, dictionary);
+}
+
+function createReaderUtterance({
+  text,
+  language,
+  rate,
+  dictionary,
+  voice,
+}: ReaderTtsRequest) {
+  const utterance = new SpeechSynthesisUtterance(
+    buildReaderSpeechText(text, dictionary)
+  );
+
+  utterance.rate = rate;
+  utterance.lang = resolveUtteranceLang(language, voice);
+
+  if (voice) {
+    utterance.voice = voice;
+  }
+
+  return utterance;
+}
+
+function resolveVoiceStatusLabel(params: {
+  speechSupported: boolean;
+  filteredVoices: SpeechSynthesisVoice[];
+  selectedVoice: SpeechSynthesisVoice | null;
+  selectedVoiceURI: string;
+  languageLabel: string;
+}) {
+  const {
+    speechSupported,
+    filteredVoices,
+    selectedVoice,
+    selectedVoiceURI,
+    languageLabel,
+  } = params;
+
+  if (!speechSupported) {
+    return "speech unavailable";
+  }
+
+  if (filteredVoices.length === 0) {
+    return `${languageLabel} の voice が見つかりません`;
+  }
+
+  if (selectedVoice) {
+    return formatVoiceLabel(selectedVoice);
+  }
+
+  if (selectedVoiceURI) {
+    return "stored voice unavailable";
+  }
+
+  return `default ${languageLabel} voice`;
+}
+
+function buildReaderSummaryItems(params: {
+  languageLabel: string;
+  voiceStatusLabel: string;
+  playbackRate: ReaderPlaybackRate;
+  dictionaryCount: number;
+}): ReaderSummaryItem[] {
+  return [
+    {
+      label: "language",
+      value: params.languageLabel,
+    },
+    {
+      label: "voice",
+      value: params.voiceStatusLabel,
+      wide: true,
+    },
+    {
+      label: "speed",
+      value: `${params.playbackRate.toFixed(1)}x`,
+    },
+    {
+      label: "dictionary",
+      value: `${params.dictionaryCount} entries`,
+    },
+  ];
+}
+
+function formatReaderSegmentLabel(
+  segmentIndex: number,
+  bodyParagraphCount: number
+) {
+  if (segmentIndex === 0) {
+    return "title";
+  }
+
+  if (segmentIndex === 1) {
+    return "summary";
+  }
+
+  const paragraphNumber = segmentIndex - 1;
+
+  if (paragraphNumber >= 1 && paragraphNumber <= bodyParagraphCount) {
+    return `paragraph ${paragraphNumber}`;
+  }
+
+  return `segment ${segmentIndex + 1}`;
+}
+
 function ReportsPanel({
   items,
   selectedReportId,
@@ -485,6 +675,8 @@ function ReportsPanel({
     useState<PronunciationDictionaryByLanguage>(() =>
       readStoredPronunciationDictionaries()
     );
+  const [readerProgressByReport, setReaderProgressByReport] =
+    useState<ReaderProgressByReport>(() => readStoredReaderProgress());
   const [availableVoices, setAvailableVoices] = useState<
     SpeechSynthesisVoice[]
   >([]);
@@ -542,6 +734,14 @@ function ReportsPanel({
       DASHBOARD_STORAGE_NAMESPACE
     );
   }, [pronunciationDictionaries]);
+
+  useEffect(() => {
+    writeStorageJSON(
+      REPORT_READER_PROGRESS_STORAGE_KEY,
+      readerProgressByReport,
+      DASHBOARD_STORAGE_NAMESPACE
+    );
+  }, [readerProgressByReport]);
 
   useEffect(() => {
     writeStorageJSON(
@@ -630,8 +830,12 @@ function ReportsPanel({
 
   const selectedVoice = useMemo(
     () =>
-      filteredVoices.find((voice) => voice.voiceURI === selectedVoiceURI) ?? null,
-    [filteredVoices, selectedVoiceURI]
+      resolveSelectedVoiceForLanguage({
+        availableVoices,
+        selectedVoiceSelections,
+        language: selectedReaderLanguage,
+      }),
+    [availableVoices, selectedVoiceSelections, selectedReaderLanguage]
   );
 
   useEffect(() => {
@@ -654,6 +858,27 @@ function ReportsPanel({
     return buildReportSegments(selectedReport);
   }, [selectedReport]);
 
+  const savedProgressForSelectedReport = useMemo(() => {
+    if (!selectedReport) {
+      return null;
+    }
+
+    const savedProgress = readerProgressByReport[selectedReport.id];
+
+    if (!savedProgress) {
+      return null;
+    }
+
+    if (
+      savedProgress.segmentIndex < 0 ||
+      savedProgress.segmentIndex >= selectedSegments.length
+    ) {
+      return null;
+    }
+
+    return savedProgress;
+  }, [readerProgressByReport, selectedReport, selectedSegments.length]);
+
   const filterCounts = useMemo(
     () => ({
       all: items.length,
@@ -663,6 +888,37 @@ function ReportsPanel({
     }),
     [items]
   );
+
+  const updateReaderProgress = (
+    reportId: string,
+    segmentIndex: number,
+    language: ReaderLanguage
+  ) => {
+    setReaderProgressByReport((currentProgress) => ({
+      ...currentProgress,
+      [reportId]: {
+        segmentIndex,
+        language,
+        updatedAt: new Date().toISOString(),
+      },
+    }));
+  };
+
+  const clearReaderProgress = (reportId: string | null) => {
+    if (!reportId) {
+      return;
+    }
+
+    setReaderProgressByReport((currentProgress) => {
+      if (!(reportId in currentProgress)) {
+        return currentProgress;
+      }
+
+      const nextProgress = { ...currentProgress };
+      delete nextProgress[reportId];
+      return nextProgress;
+    });
+  };
 
   const updateSelectedReaderLanguage = (
     nextLanguage: ReaderLanguage,
@@ -779,10 +1035,18 @@ function ReportsPanel({
       return;
     }
 
+    const savedProgressLanguage =
+      readerProgressByReport[selectedReportIdValue]?.language;
+
+    if (savedProgressLanguage) {
+      setSelectedReaderLanguage(savedProgressLanguage);
+      return;
+    }
+
     if (detectedLanguageSuggestion) {
       updateSelectedReaderLanguage(detectedLanguageSuggestion.language, "auto");
     }
-  }, [selectedReportIdValue, detectedLanguageSuggestion]);
+  }, [selectedReportIdValue, detectedLanguageSuggestion, readerProgressByReport]);
 
   const handleDictionaryEditStart = (entry: PronunciationEntry) => {
     setEditingDictionaryKey(entry.source.toLowerCase());
@@ -924,17 +1188,13 @@ function ReportsPanel({
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(
-      applyPronunciationDictionary(segment.text, pronunciationDictionaryRef.current)
-    );
-
-    utterance.rate = playbackRateRef.current;
-    utterance.lang = currentLanguageConfig.fallbackUtteranceLang;
-
-    if (selectedVoiceRef.current) {
-      utterance.voice = selectedVoiceRef.current;
-      utterance.lang = selectedVoiceRef.current.lang;
-    }
+    const utterance = createReaderUtterance({
+      text: segment.text,
+      language: selectedReaderLanguageRef.current,
+      rate: playbackRateRef.current,
+      dictionary: pronunciationDictionaryRef.current,
+      voice: selectedVoiceRef.current,
+    });
 
     utterance.onstart = () => {
       if (playbackSessionIdRef.current !== sessionId) {
@@ -945,6 +1205,14 @@ function ReportsPanel({
       setIsPaused(false);
       setReadingReportId(activeReportIdRef.current);
       setCurrentSegmentIndex(segmentIndex);
+
+      if (activeReportIdRef.current) {
+        updateReaderProgress(
+          activeReportIdRef.current,
+          segmentIndex,
+          selectedReaderLanguageRef.current
+        );
+      }
     };
 
     utterance.onpause = () => {
@@ -975,6 +1243,7 @@ function ReportsPanel({
         return;
       }
 
+      clearReaderProgress(activeReportIdRef.current);
       finishReading(sessionId);
     };
 
@@ -986,13 +1255,35 @@ function ReportsPanel({
     window.speechSynthesis.speak(utterance);
   };
 
-  const startReadingFromSegment = (segmentIndex: number) => {
+  const startReadingFromSegment = (
+    segmentIndex: number,
+    options?: {
+      languageOverride?: ReaderLanguage;
+    }
+  ) => {
     if (!speechSupported || !selectedReport) {
       return;
     }
 
     if (segmentIndex < 0 || segmentIndex >= selectedSegments.length) {
       return;
+    }
+
+    const languageToUse =
+      options?.languageOverride ?? selectedReaderLanguageRef.current;
+
+    selectedReaderLanguageRef.current = languageToUse;
+    playbackRateRef.current = selectedPlaybackRates[languageToUse];
+    pronunciationDictionaryRef.current =
+      pronunciationDictionaries[languageToUse] ?? [];
+    selectedVoiceRef.current = resolveSelectedVoiceForLanguage({
+      availableVoices,
+      selectedVoiceSelections,
+      language: languageToUse,
+    });
+
+    if (languageToUse !== selectedReaderLanguage) {
+      setSelectedReaderLanguage(languageToUse);
     }
 
     playbackSessionIdRef.current += 1;
@@ -1002,11 +1293,22 @@ function ReportsPanel({
     activeReportIdRef.current = selectedReport.id;
     segmentQueueRef.current = selectedSegments;
     setCurrentSegmentIndex(segmentIndex);
+    updateReaderProgress(selectedReport.id, segmentIndex, languageToUse);
     speakSegmentAt(sessionId, segmentIndex);
   };
 
   const startReading = () => {
     startReadingFromSegment(0);
+  };
+
+  const resumeSavedPosition = () => {
+    if (!savedProgressForSelectedReport) {
+      return;
+    }
+
+    startReadingFromSegment(savedProgressForSelectedReport.segmentIndex, {
+      languageOverride: savedProgressForSelectedReport.language,
+    });
   };
 
   const pauseReading = () => {
@@ -1025,6 +1327,20 @@ function ReportsPanel({
 
     window.speechSynthesis.resume();
     setIsPaused(false);
+  };
+
+  const skipToPreviousSegment = () => {
+    if (!speechSupported || !selectedReport || currentSegmentIndex == null) {
+      return;
+    }
+
+    const previousIndex = currentSegmentIndex - 1;
+
+    if (previousIndex < 0) {
+      return;
+    }
+
+    startReadingFromSegment(previousIndex);
   };
 
   const skipToNextSegment = () => {
@@ -1093,23 +1409,32 @@ function ReportsPanel({
     return selectedSegments[currentSegmentIndex] ?? null;
   }, [currentSegmentIndex, selectedSegments]);
 
+  const canSkipPrevious =
+    speechSupported &&
+    selectedReport != null &&
+    currentSegmentIndex != null &&
+    currentSegmentIndex > 0;
+
   const canSkipNext =
     speechSupported &&
     selectedReport != null &&
     currentSegmentIndex != null &&
     currentSegmentIndex < selectedSegments.length - 1;
 
+  const canResumeSaved =
+    speechSupported &&
+    selectedReport != null &&
+    savedProgressForSelectedReport != null;
+
   const currentLanguageLabel = getLanguageLabel(selectedReaderLanguage);
 
-  const voiceStatusLabel = !speechSupported
-    ? "speech unavailable"
-    : filteredVoices.length === 0
-      ? `${currentLanguageLabel} の voice が見つかりません`
-      : selectedVoice
-        ? formatVoiceLabel(selectedVoice)
-        : selectedVoiceURI
-          ? "stored voice unavailable"
-          : `default ${currentLanguageLabel} voice`;
+  const voiceStatusLabel = resolveVoiceStatusLabel({
+    speechSupported,
+    filteredVoices,
+    selectedVoice,
+    selectedVoiceURI,
+    languageLabel: currentLanguageLabel,
+  });
 
   const detectedLanguageLabel = detectedLanguageSuggestion
     ? getLanguageLabel(detectedLanguageSuggestion.language)
@@ -1125,29 +1450,29 @@ function ReportsPanel({
       ? `selected report: ${selectedReport.title}`
       : "selected report ready";
 
-  const readerSummaryItems: ReaderSummaryItem[] = [
-    {
-      label: "language",
-      value: currentLanguageLabel,
-    },
-    {
-      label: "voice",
-      value: voiceStatusLabel,
-      wide: true,
-    },
-    {
-      label: "speed",
-      value: `${playbackRate.toFixed(1)}x`,
-    },
-    {
-      label: "dictionary",
-      value: `${activePronunciationDictionary.length} entries`,
-    },
-  ];
+  const readerSummaryItems = buildReaderSummaryItems({
+    languageLabel: currentLanguageLabel,
+    voiceStatusLabel,
+    playbackRate,
+    dictionaryCount: activePronunciationDictionary.length,
+  });
 
   const isDetectedLanguageDifferent =
     Boolean(detectedLanguageSuggestion) &&
     detectedLanguageSuggestion?.language !== selectedReaderLanguage;
+
+  const savedProgressLabel =
+    savedProgressForSelectedReport != null
+      ? formatReaderSegmentLabel(
+          savedProgressForSelectedReport.segmentIndex,
+          selectedBodyParagraphs.length
+        )
+      : null;
+
+  const savedProgressLanguageLabel =
+    savedProgressForSelectedReport != null
+      ? getLanguageLabel(savedProgressForSelectedReport.language)
+      : null;
 
   return (
     <div
@@ -1200,7 +1525,7 @@ function ReportsPanel({
               fontWeight: 600,
             }}
           >
-            選択中レポートの読み上げ操作をここから行います。
+            選択中レポートの読み上げ、段落ジャンプ、言語設定をここから操作します。
           </p>
 
           <div
@@ -1308,6 +1633,43 @@ function ReportsPanel({
               );
             })}
           </div>
+
+          {savedProgressForSelectedReport ? (
+            <div
+              style={{
+                display: "grid",
+                gap: "6px",
+                marginTop: "4px",
+                padding: "10px 12px",
+                borderRadius: "12px",
+                border: "1px solid #d1fae5",
+                background: "#f0fdf4",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "11px",
+                  lineHeight: 1.4,
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  color: "#166534",
+                }}
+              >
+                saved progress
+              </span>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "12px",
+                  lineHeight: 1.6,
+                  color: "#166534",
+                }}
+              >
+                {savedProgressLabel} / {savedProgressLanguageLabel}
+              </p>
+            </div>
+          ) : null}
 
           {detectedLanguageSuggestion ? (
             <div
@@ -1439,6 +1801,18 @@ function ReportsPanel({
               </p>
             </div>
           )}
+
+          <p
+            style={{
+              margin: 0,
+              fontSize: "12px",
+              lineHeight: 1.6,
+              color: "#64748b",
+            }}
+          >
+            現在は browser TTS を使用中です。voice / pronunciation /
+            speed は将来の外部TTSへ差し替えしやすい形で保持しています。
+          </p>
         </div>
 
         <div
@@ -1588,6 +1962,18 @@ function ReportsPanel({
               label="read aloud"
               onClick={startReading}
               disabled={!speechSupported || !selectedReport}
+            />
+
+            <DashboardActionButton
+              label="resume saved"
+              onClick={resumeSavedPosition}
+              disabled={!canResumeSaved}
+            />
+
+            <DashboardActionButton
+              label="skip previous"
+              onClick={skipToPreviousSegment}
+              disabled={!canSkipPrevious}
             />
 
             <DashboardActionButton
@@ -1747,6 +2133,7 @@ function ReportsPanel({
                 const isSelected = item.id === selectedReport?.id;
                 const isCurrentlyReading = item.id === readingReportId && isReading;
                 const statusStyle = statusStyles[item.status];
+                const itemSavedProgress = readerProgressByReport[item.id];
 
                 return (
                   <button
@@ -1824,6 +2211,27 @@ function ReportsPanel({
                           justifyContent: "flex-end",
                         }}
                       >
+                        {itemSavedProgress && !isCurrentlyReading ? (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              padding: "4px 8px",
+                              borderRadius: "999px",
+                              background: "#f0fdf4",
+                              border: "1px solid #bbf7d0",
+                              color: "#166534",
+                              fontSize: "10px",
+                              fontWeight: 700,
+                              letterSpacing: "0.04em",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            resume
+                          </span>
+                        ) : null}
+
                         {isCurrentlyReading && (
                           <span
                             style={{
