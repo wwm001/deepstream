@@ -659,6 +659,23 @@ function formatReaderSegmentLabel(
   return `segment ${segmentIndex + 1}`;
 }
 
+function findNextReportInQueue(
+  reports: ReportRecord[],
+  activeReportId: string | null
+) {
+  if (!activeReportId) {
+    return reports[0] ?? null;
+  }
+
+  const currentIndex = reports.findIndex((report) => report.id === activeReportId);
+
+  if (currentIndex === -1) {
+    return null;
+  }
+
+  return reports[currentIndex + 1] ?? null;
+}
+
 function ReportsPanel({
   items,
   selectedReportId,
@@ -686,6 +703,7 @@ function ReportsPanel({
   const [currentSegmentIndex, setCurrentSegmentIndex] = useState<number | null>(
     null
   );
+  const [autoAdvanceQueue, setAutoAdvanceQueue] = useState(false);
 
   const [reportFilter, setReportFilter] = useState<ReportFilter>("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -710,17 +728,30 @@ function ReportsPanel({
   );
   const segmentQueueRef = useRef<ReportSegment[]>([]);
   const activeReportIdRef = useRef<string | null>(null);
+  const activeQueuedNextReportIdRef = useRef<string | null>(null);
+  const activeReportShouldArchiveRef = useRef(false);
   const playbackSessionIdRef = useRef(0);
   const autoDetectedReportIdRef = useRef<string | null>(null);
   const manualReaderLanguageByReportRef = useRef<
     Partial<Record<string, ReaderLanguage>>
   >({});
+  const itemsRef = useRef<ReportRecord[]>(items);
+  const filteredItemsRef = useRef<ReportRecord[]>([]);
+  const autoAdvanceQueueRef = useRef(autoAdvanceQueue);
 
   const speechSupported =
     typeof window !== "undefined" && "speechSynthesis" in window;
 
   const playbackRate = selectedPlaybackRates[selectedReaderLanguage];
   const currentLanguageConfig = readerLanguageConfigs[selectedReaderLanguage];
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  useEffect(() => {
+    autoAdvanceQueueRef.current = autoAdvanceQueue;
+  }, [autoAdvanceQueue]);
 
   useEffect(() => {
     pronunciationDictionaryRef.current =
@@ -790,21 +821,26 @@ function ReportsPanel({
     });
   }, [items, reportFilter, searchTerm]);
 
+  useEffect(() => {
+    filteredItemsRef.current = filteredItems;
+  }, [filteredItems]);
+
   const selectedReport = useMemo(() => {
-    if (filteredItems.length === 0) {
+    if (items.length === 0) {
       return null;
     }
 
     if (!selectedReportId) {
-      return filteredItems[0] ?? null;
+      return filteredItems[0] ?? items[0] ?? null;
     }
 
     return (
-      filteredItems.find((item) => item.id === selectedReportId) ??
+      items.find((item) => item.id === selectedReportId) ??
       filteredItems[0] ??
+      items[0] ??
       null
     );
-  }, [filteredItems, selectedReportId]);
+  }, [items, filteredItems, selectedReportId]);
 
   const selectedReportIdValue = selectedReport?.id ?? null;
 
@@ -857,6 +893,22 @@ function ReportsPanel({
 
     return buildReportSegments(selectedReport);
   }, [selectedReport]);
+
+  const selectedReportVisibleInQueue = useMemo(() => {
+    if (!selectedReport) {
+      return false;
+    }
+
+    return filteredItems.some((item) => item.id === selectedReport.id);
+  }, [filteredItems, selectedReport]);
+
+  const nextReportInQueue = useMemo(() => {
+    if (!selectedReport || !selectedReportVisibleInQueue) {
+      return null;
+    }
+
+    return findNextReportInQueue(filteredItems, selectedReport.id);
+  }, [filteredItems, selectedReport, selectedReportVisibleInQueue]);
 
   const savedProgressForSelectedReport = useMemo(() => {
     if (!selectedReport) {
@@ -978,6 +1030,41 @@ function ReportsPanel({
     }
 
     updateSelectedReaderLanguage(detectedLanguageSuggestion.language, "manual");
+  };
+
+  const resolveReaderLanguageForReport = (report: ReportRecord) => {
+    const manualLanguage = manualReaderLanguageByReportRef.current[report.id];
+
+    if (manualLanguage) {
+      return manualLanguage;
+    }
+
+    const savedProgressLanguage = readerProgressByReport[report.id]?.language;
+
+    if (savedProgressLanguage) {
+      return savedProgressLanguage;
+    }
+
+    return detectReaderLanguageFromReport(report)?.language ?? selectedReaderLanguageRef.current;
+  };
+
+  const cycleReportStatusIfNeeded = (
+    report: ReportRecord,
+    targetStatus: ReportStatus
+  ) => {
+    if (report.status === targetStatus) {
+      return;
+    }
+
+    if (report.status === "new" && targetStatus === "reading") {
+      onCycleReportStatus(report.id);
+      return;
+    }
+
+    if (report.status === "reading" && targetStatus === "archived") {
+      onCycleReportStatus(report.id);
+      return;
+    }
   };
 
   useEffect(() => {
@@ -1160,6 +1247,8 @@ function ReportsPanel({
     utteranceRef.current = null;
     segmentQueueRef.current = [];
     activeReportIdRef.current = null;
+    activeQueuedNextReportIdRef.current = null;
+    activeReportShouldArchiveRef.current = false;
     setIsReading(false);
     setIsPaused(false);
     setReadingReportId(null);
@@ -1174,6 +1263,102 @@ function ReportsPanel({
     playbackSessionIdRef.current += 1;
     window.speechSynthesis.cancel();
     finishReading();
+  };
+
+  const startReadingForReportAtSegment = (
+    report: ReportRecord,
+    segmentIndex: number,
+    options?: {
+      languageOverride?: ReaderLanguage;
+    }
+  ) => {
+    if (!speechSupported) {
+      return;
+    }
+
+    const segments = buildReportSegments(report);
+
+    if (segmentIndex < 0 || segmentIndex >= segments.length) {
+      return;
+    }
+
+    const languageToUse =
+      options?.languageOverride ?? resolveReaderLanguageForReport(report);
+
+    const nextVisibleReport = findNextReportInQueue(
+      filteredItemsRef.current,
+      report.id
+    );
+
+    activeQueuedNextReportIdRef.current = nextVisibleReport?.id ?? null;
+    activeReportShouldArchiveRef.current =
+      report.status === "new" || report.status === "reading";
+
+    if (report.status === "new") {
+      cycleReportStatusIfNeeded(report, "reading");
+    }
+
+    if (selectedReportId !== report.id) {
+      onSelectReport(report.id);
+    }
+
+    selectedReaderLanguageRef.current = languageToUse;
+    playbackRateRef.current = selectedPlaybackRates[languageToUse];
+    pronunciationDictionaryRef.current =
+      pronunciationDictionaries[languageToUse] ?? [];
+    selectedVoiceRef.current = resolveSelectedVoiceForLanguage({
+      availableVoices,
+      selectedVoiceSelections,
+      language: languageToUse,
+    });
+
+    if (languageToUse !== selectedReaderLanguage) {
+      setSelectedReaderLanguage(languageToUse);
+    }
+
+    playbackSessionIdRef.current += 1;
+    const sessionId = playbackSessionIdRef.current;
+
+    window.speechSynthesis.cancel();
+    activeReportIdRef.current = report.id;
+    segmentQueueRef.current = segments;
+    setCurrentSegmentIndex(segmentIndex);
+    updateReaderProgress(report.id, segmentIndex, languageToUse);
+    speakSegmentAt(sessionId, segmentIndex);
+  };
+
+  const handleCompletedReading = (sessionId: number) => {
+    if (playbackSessionIdRef.current !== sessionId) {
+      return;
+    }
+
+    const completedReportId = activeReportIdRef.current;
+    const nextQueuedReportId = activeQueuedNextReportIdRef.current;
+    const shouldArchive = activeReportShouldArchiveRef.current;
+
+    clearReaderProgress(completedReportId);
+
+    if (completedReportId && shouldArchive) {
+      const completedReport = itemsRef.current.find(
+        (item) => item.id === completedReportId
+      );
+
+      if (completedReport && completedReport.status === "reading") {
+        cycleReportStatusIfNeeded(completedReport, "archived");
+      }
+    }
+
+    finishReading(sessionId);
+
+    if (autoAdvanceQueueRef.current && nextQueuedReportId) {
+      const nextReport = itemsRef.current.find(
+        (item) => item.id === nextQueuedReportId
+      );
+
+      if (nextReport) {
+        startReadingForReportAtSegment(nextReport, 0);
+      }
+    }
   };
 
   const speakSegmentAt = (sessionId: number, segmentIndex: number) => {
@@ -1243,8 +1428,7 @@ function ReportsPanel({
         return;
       }
 
-      clearReaderProgress(activeReportIdRef.current);
-      finishReading(sessionId);
+      handleCompletedReading(sessionId);
     };
 
     utterance.onerror = () => {
@@ -1261,54 +1445,37 @@ function ReportsPanel({
       languageOverride?: ReaderLanguage;
     }
   ) => {
-    if (!speechSupported || !selectedReport) {
+    if (!selectedReport) {
       return;
     }
 
-    if (segmentIndex < 0 || segmentIndex >= selectedSegments.length) {
-      return;
-    }
-
-    const languageToUse =
-      options?.languageOverride ?? selectedReaderLanguageRef.current;
-
-    selectedReaderLanguageRef.current = languageToUse;
-    playbackRateRef.current = selectedPlaybackRates[languageToUse];
-    pronunciationDictionaryRef.current =
-      pronunciationDictionaries[languageToUse] ?? [];
-    selectedVoiceRef.current = resolveSelectedVoiceForLanguage({
-      availableVoices,
-      selectedVoiceSelections,
-      language: languageToUse,
-    });
-
-    if (languageToUse !== selectedReaderLanguage) {
-      setSelectedReaderLanguage(languageToUse);
-    }
-
-    playbackSessionIdRef.current += 1;
-    const sessionId = playbackSessionIdRef.current;
-
-    window.speechSynthesis.cancel();
-    activeReportIdRef.current = selectedReport.id;
-    segmentQueueRef.current = selectedSegments;
-    setCurrentSegmentIndex(segmentIndex);
-    updateReaderProgress(selectedReport.id, segmentIndex, languageToUse);
-    speakSegmentAt(sessionId, segmentIndex);
+    startReadingForReportAtSegment(selectedReport, segmentIndex, options);
   };
 
   const startReading = () => {
     startReadingFromSegment(0);
   };
 
-  const resumeSavedPosition = () => {
-    if (!savedProgressForSelectedReport) {
+  const startReadingNextReport = () => {
+    if (!nextReportInQueue) {
       return;
     }
 
-    startReadingFromSegment(savedProgressForSelectedReport.segmentIndex, {
-      languageOverride: savedProgressForSelectedReport.language,
-    });
+    startReadingForReportAtSegment(nextReportInQueue, 0);
+  };
+
+  const resumeSavedPosition = () => {
+    if (!selectedReport || !savedProgressForSelectedReport) {
+      return;
+    }
+
+    startReadingForReportAtSegment(
+      selectedReport,
+      savedProgressForSelectedReport.segmentIndex,
+      {
+        languageOverride: savedProgressForSelectedReport.language,
+      }
+    );
   };
 
   const pauseReading = () => {
@@ -1330,7 +1497,7 @@ function ReportsPanel({
   };
 
   const skipToPreviousSegment = () => {
-    if (!speechSupported || !selectedReport || currentSegmentIndex == null) {
+    if (!selectedReport || currentSegmentIndex == null) {
       return;
     }
 
@@ -1340,11 +1507,11 @@ function ReportsPanel({
       return;
     }
 
-    startReadingFromSegment(previousIndex);
+    startReadingForReportAtSegment(selectedReport, previousIndex);
   };
 
   const skipToNextSegment = () => {
-    if (!speechSupported || !selectedReport || currentSegmentIndex == null) {
+    if (!selectedReport || currentSegmentIndex == null) {
       return;
     }
 
@@ -1355,7 +1522,7 @@ function ReportsPanel({
       return;
     }
 
-    startReadingFromSegment(nextIndex);
+    startReadingForReportAtSegment(selectedReport, nextIndex);
   };
 
   useEffect(() => {
@@ -1425,6 +1592,10 @@ function ReportsPanel({
     speechSupported &&
     selectedReport != null &&
     savedProgressForSelectedReport != null;
+
+  const canReadNextReport =
+    speechSupported &&
+    nextReportInQueue != null;
 
   const currentLanguageLabel = getLanguageLabel(selectedReaderLanguage);
 
@@ -1525,7 +1696,7 @@ function ReportsPanel({
               fontWeight: 600,
             }}
           >
-            選択中レポートの読み上げ、段落ジャンプ、言語設定をここから操作します。
+            選択中レポートの読み上げ、段落ジャンプ、言語設定、次レポート遷移をここから操作します。
           </p>
 
           <div
@@ -1810,8 +1981,7 @@ function ReportsPanel({
               color: "#64748b",
             }}
           >
-            現在は browser TTS を使用中です。voice / pronunciation /
-            speed は将来の外部TTSへ差し替えしやすい形で保持しています。
+            読み始めたレポートは new なら reading へ進み、最後まで読み切ると reading から archived へ進みます。auto queue を ON にすると、見えている一覧順で次レポートへ進みます。
           </p>
         </div>
 
@@ -1937,17 +2107,47 @@ function ReportsPanel({
             </select>
           </div>
 
-          <p
+          <div
             style={{
-              margin: 0,
-              fontSize: "12px",
-              lineHeight: 1.6,
-              color: "#64748b",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px",
+              flexWrap: "wrap",
             }}
           >
-            voice options: {filteredVoices.length} available for{" "}
-            {currentLanguageLabel}
-          </p>
+            <p
+              style={{
+                margin: 0,
+                fontSize: "12px",
+                lineHeight: 1.6,
+                color: "#64748b",
+              }}
+            >
+              voice options: {filteredVoices.length} available for{" "}
+              {currentLanguageLabel}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setAutoAdvanceQueue((current) => !current)}
+              style={{
+                height: "34px",
+                padding: "0 12px",
+                borderRadius: "10px",
+                border: autoAdvanceQueue
+                  ? "1px solid #86efac"
+                  : "1px solid #d1d5db",
+                background: autoAdvanceQueue ? "#f0fdf4" : "#ffffff",
+                color: autoAdvanceQueue ? "#166534" : "#475569",
+                fontSize: "12px",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              auto queue: {autoAdvanceQueue ? "on" : "off"}
+            </button>
+          </div>
 
           <div
             style={{
@@ -1962,6 +2162,12 @@ function ReportsPanel({
               label="read aloud"
               onClick={startReading}
               disabled={!speechSupported || !selectedReport}
+            />
+
+            <DashboardActionButton
+              label="read next report"
+              onClick={startReadingNextReport}
+              disabled={!canReadNextReport}
             />
 
             <DashboardActionButton
