@@ -704,6 +704,9 @@ function ReportsPanel({
     null
   );
   const [autoAdvanceQueue, setAutoAdvanceQueue] = useState(false);
+  const [viewportWidth, setViewportWidth] = useState<number>(() =>
+    typeof window === "undefined" ? 1280 : window.innerWidth
+  );
 
   const [reportFilter, setReportFilter] = useState<ReportFilter>("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -744,6 +747,27 @@ function ReportsPanel({
 
   const playbackRate = selectedPlaybackRates[selectedReaderLanguage];
   const currentLanguageConfig = readerLanguageConfigs[selectedReaderLanguage];
+
+  const isMobileLayout = viewportWidth < 980;
+  const isPhoneLayout = viewportWidth < 700;
+  const isNarrowPhone = viewportWidth < 480;
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   useEffect(() => {
     itemsRef.current = items;
@@ -1045,7 +1069,10 @@ function ReportsPanel({
       return savedProgressLanguage;
     }
 
-    return detectReaderLanguageFromReport(report)?.language ?? selectedReaderLanguageRef.current;
+    return (
+      detectReaderLanguageFromReport(report)?.language ??
+      selectedReaderLanguageRef.current
+    );
   };
 
   const cycleReportStatusIfNeeded = (
@@ -1593,9 +1620,7 @@ function ReportsPanel({
     selectedReport != null &&
     savedProgressForSelectedReport != null;
 
-  const canReadNextReport =
-    speechSupported &&
-    nextReportInQueue != null;
+  const canReadNextReport = speechSupported && nextReportInQueue != null;
 
   const currentLanguageLabel = getLanguageLabel(selectedReaderLanguage);
 
@@ -1645,21 +1670,28 @@ function ReportsPanel({
       ? getLanguageLabel(savedProgressForSelectedReport.language)
       : null;
 
+  const controlGridTemplateColumns = isPhoneLayout
+    ? "1fr"
+    : "auto minmax(180px, 1fr)";
+
+  const summaryCardMinWidth = isNarrowPhone ? "100%" : isPhoneLayout ? "140px" : undefined;
+  const summaryCardMaxWidth = isNarrowPhone ? "100%" : undefined;
+
   return (
     <div
       style={{
         display: "grid",
-        gap: "16px",
+        gap: isPhoneLayout ? "14px" : "16px",
       }}
     >
       <section
         style={{
           display: "flex",
+          flexDirection: isMobileLayout ? "column" : "row",
           justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: "16px",
-          flexWrap: "wrap",
-          padding: "14px 16px",
+          alignItems: "stretch",
+          gap: isPhoneLayout ? "14px" : "16px",
+          padding: isPhoneLayout ? "14px" : "14px 16px",
           borderRadius: "14px",
           border: "1px solid #dbe4f0",
           background:
@@ -1670,8 +1702,9 @@ function ReportsPanel({
         <div
           style={{
             display: "grid",
-            gap: "6px",
-            minWidth: "220px",
+            gap: "8px",
+            minWidth: 0,
+            width: "100%",
           }}
         >
           <p
@@ -1690,7 +1723,7 @@ function ReportsPanel({
           <p
             style={{
               margin: 0,
-              fontSize: "14px",
+              fontSize: isPhoneLayout ? "13px" : "14px",
               lineHeight: 1.7,
               color: "#0f172a",
               fontWeight: 600,
@@ -1702,7 +1735,7 @@ function ReportsPanel({
           <div
             style={{
               display: "flex",
-              alignItems: "center",
+              alignItems: "flex-start",
               gap: "8px",
               flexWrap: "wrap",
               minHeight: "22px",
@@ -1713,7 +1746,7 @@ function ReportsPanel({
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "6px",
-                padding: "4px 8px",
+                padding: "5px 9px",
                 borderRadius: "999px",
                 border: `1px solid ${isReading ? "#bbf7d0" : "#e5e7eb"}`,
                 background: isReading ? "#f0fdf4" : "#f8fafc",
@@ -1722,6 +1755,7 @@ function ReportsPanel({
                 letterSpacing: "0.04em",
                 textTransform: "uppercase",
                 color: readingStatusColor,
+                flexShrink: 0,
               }}
             >
               <span
@@ -1740,9 +1774,10 @@ function ReportsPanel({
               style={{
                 margin: 0,
                 fontSize: "12px",
-                lineHeight: 1.5,
+                lineHeight: 1.55,
                 color: "#64748b",
                 wordBreak: "break-word",
+                minWidth: 0,
               }}
             >
               {selectedReportStatusLabel}
@@ -1766,12 +1801,16 @@ function ReportsPanel({
                   style={{
                     display: "grid",
                     gap: "2px",
-                    minWidth: isWide ? "220px" : "120px",
-                    maxWidth: isWide ? "min(360px, 100%)" : "180px",
-                    padding: "8px 10px",
+                    minWidth: summaryCardMinWidth ?? (isWide ? "220px" : "120px"),
+                    maxWidth:
+                      summaryCardMaxWidth ??
+                      (isWide ? "min(360px, 100%)" : "180px"),
+                    flex: isNarrowPhone ? "1 1 100%" : isPhoneLayout ? "1 1 140px" : "0 1 auto",
+                    padding: isPhoneLayout ? "10px" : "8px 10px",
                     borderRadius: "12px",
                     border: "1px solid #e2e8f0",
                     background: "rgba(255, 255, 255, 0.88)",
+                    minHeight: isPhoneLayout ? "56px" : undefined,
                   }}
                 >
                   <span
@@ -1793,9 +1832,10 @@ function ReportsPanel({
                       lineHeight: 1.5,
                       color: "#0f172a",
                       fontWeight: 600,
-                      whiteSpace: "nowrap",
+                      whiteSpace: isPhoneLayout ? "normal" : "nowrap",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
+                      wordBreak: "break-word",
                     }}
                   >
                     {item.value}
@@ -1810,7 +1850,7 @@ function ReportsPanel({
               style={{
                 display: "grid",
                 gap: "6px",
-                marginTop: "4px",
+                marginTop: "2px",
                 padding: "10px 12px",
                 borderRadius: "12px",
                 border: "1px solid #d1fae5",
@@ -1835,6 +1875,7 @@ function ReportsPanel({
                   fontSize: "12px",
                   lineHeight: 1.6,
                   color: "#166534",
+                  wordBreak: "break-word",
                 }}
               >
                 {savedProgressLabel} / {savedProgressLanguageLabel}
@@ -1847,7 +1888,7 @@ function ReportsPanel({
               style={{
                 display: "grid",
                 gap: "8px",
-                marginTop: "4px",
+                marginTop: "2px",
                 padding: "10px 12px",
                 borderRadius: "12px",
                 border: "1px solid #dbeafe",
@@ -1885,6 +1926,7 @@ function ReportsPanel({
                     lineHeight: 1.6,
                     color: "#1e3a8a",
                     fontWeight: 700,
+                    wordBreak: "break-word",
                   }}
                 >
                   {detectedLanguageLabel} / {detectedConfidenceLabel}
@@ -1908,8 +1950,8 @@ function ReportsPanel({
                     type="button"
                     onClick={applyDetectedLanguageSuggestion}
                     style={{
-                      height: "34px",
-                      padding: "0 12px",
+                      minHeight: "40px",
+                      padding: "8px 12px",
                       borderRadius: "10px",
                       border: "1px solid #93c5fd",
                       background: "#eff6ff",
@@ -1917,6 +1959,8 @@ function ReportsPanel({
                       fontSize: "12px",
                       fontWeight: 700,
                       cursor: "pointer",
+                      width: isPhoneLayout ? "100%" : "auto",
+                      touchAction: "manipulation",
                     }}
                   >
                     switch to detected language ({detectedLanguageLabel})
@@ -1941,7 +1985,7 @@ function ReportsPanel({
               style={{
                 display: "grid",
                 gap: "6px",
-                marginTop: "4px",
+                marginTop: "2px",
                 padding: "10px 12px",
                 borderRadius: "12px",
                 border: "1px solid #e2e8f0",
@@ -1988,16 +2032,15 @@ function ReportsPanel({
         <div
           style={{
             display: "grid",
-            gap: "8px",
-            marginLeft: "auto",
-            minWidth: "300px",
-            maxWidth: "100%",
+            gap: "10px",
+            minWidth: 0,
+            width: "100%",
           }}
         >
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "auto minmax(180px, 1fr)",
+              gridTemplateColumns: controlGridTemplateColumns,
               alignItems: "center",
               gap: "8px",
             }}
@@ -2021,12 +2064,14 @@ function ReportsPanel({
                 )
               }
               style={{
-                padding: "8px 10px",
+                padding: "10px 12px",
+                minHeight: "42px",
                 borderRadius: "10px",
                 border: "1px solid #d1d5db",
                 background: "#ffffff",
                 color: "#111827",
                 fontSize: "13px",
+                width: "100%",
               }}
             >
               {playbackRates.map((rate) => (
@@ -2055,12 +2100,14 @@ function ReportsPanel({
                 )
               }
               style={{
-                padding: "8px 10px",
+                padding: "10px 12px",
+                minHeight: "42px",
                 borderRadius: "10px",
                 border: "1px solid #d1d5db",
                 background: "#ffffff",
                 color: "#111827",
                 fontSize: "13px",
+                width: "100%",
               }}
             >
               {readerLanguages.map((language) => (
@@ -2090,12 +2137,14 @@ function ReportsPanel({
               }
               disabled={!speechSupported}
               style={{
-                padding: "8px 10px",
+                padding: "10px 12px",
+                minHeight: "42px",
                 borderRadius: "10px",
                 border: "1px solid #d1d5db",
                 background: speechSupported ? "#ffffff" : "#f8fafc",
                 color: "#111827",
                 fontSize: "13px",
+                width: "100%",
               }}
             >
               <option value="">default system voice</option>
@@ -2110,10 +2159,11 @@ function ReportsPanel({
           <div
             style={{
               display: "flex",
-              alignItems: "center",
+              alignItems: isPhoneLayout ? "stretch" : "center",
               justifyContent: "space-between",
               gap: "12px",
               flexWrap: "wrap",
+              flexDirection: isPhoneLayout ? "column" : "row",
             }}
           >
             <p
@@ -2122,6 +2172,7 @@ function ReportsPanel({
                 fontSize: "12px",
                 lineHeight: 1.6,
                 color: "#64748b",
+                width: isPhoneLayout ? "100%" : "auto",
               }}
             >
               voice options: {filteredVoices.length} available for{" "}
@@ -2132,8 +2183,8 @@ function ReportsPanel({
               type="button"
               onClick={() => setAutoAdvanceQueue((current) => !current)}
               style={{
-                height: "34px",
-                padding: "0 12px",
+                minHeight: "40px",
+                padding: "8px 12px",
                 borderRadius: "10px",
                 border: autoAdvanceQueue
                   ? "1px solid #86efac"
@@ -2143,6 +2194,8 @@ function ReportsPanel({
                 fontSize: "12px",
                 fontWeight: 700,
                 cursor: "pointer",
+                width: isPhoneLayout ? "100%" : "auto",
+                touchAction: "manipulation",
               }}
             >
               auto queue: {autoAdvanceQueue ? "on" : "off"}
@@ -2151,11 +2204,12 @@ function ReportsPanel({
 
           <div
             style={{
-              display: "flex",
-              alignItems: "center",
+              display: "grid",
+              gridTemplateColumns: isPhoneLayout
+                ? "repeat(2, minmax(0, 1fr))"
+                : "repeat(auto-fit, minmax(140px, max-content))",
               gap: "8px",
-              flexWrap: "wrap",
-              justifyContent: "flex-end",
+              justifyContent: isPhoneLayout ? "stretch" : "end",
             }}
           >
             <DashboardActionButton
@@ -2219,8 +2273,10 @@ function ReportsPanel({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(280px, 360px) minmax(0, 1fr)",
-          gap: "16px",
+          gridTemplateColumns: isMobileLayout
+            ? "minmax(0, 1fr)"
+            : "minmax(280px, 360px) minmax(0, 1fr)",
+          gap: isPhoneLayout ? "14px" : "16px",
           alignItems: "start",
         }}
       >
@@ -2236,7 +2292,7 @@ function ReportsPanel({
               style={{
                 display: "grid",
                 gap: "10px",
-                padding: "14px",
+                padding: isPhoneLayout ? "12px" : "14px",
                 borderRadius: "12px",
                 border: "1px solid #e5e7eb",
                 background: "#f9fafb",
@@ -2263,7 +2319,8 @@ function ReportsPanel({
                         display: "inline-flex",
                         alignItems: "center",
                         gap: "6px",
-                        padding: "7px 10px",
+                        padding: "8px 10px",
+                        minHeight: "38px",
                         borderRadius: "999px",
                         border: isActive
                           ? "1px solid #0891b2"
@@ -2273,6 +2330,7 @@ function ReportsPanel({
                         fontSize: "12px",
                         fontWeight: 700,
                         cursor: "pointer",
+                        touchAction: "manipulation",
                       }}
                     >
                       <span>{label}</span>
@@ -2305,7 +2363,8 @@ function ReportsPanel({
                 placeholder="search reports"
                 style={{
                   width: "100%",
-                  padding: "10px 12px",
+                  padding: "12px",
+                  minHeight: "42px",
                   borderRadius: "10px",
                   border: "1px solid #d1d5db",
                   background: "#ffffff",
@@ -2359,23 +2418,24 @@ function ReportsPanel({
                           ? "#ecfeff"
                           : "#ffffff",
                       borderRadius: "12px",
-                      padding: "14px",
+                      padding: isPhoneLayout ? "14px 12px" : "14px",
                       cursor: "pointer",
                       display: "grid",
                       gap: "10px",
-                      minHeight: "148px",
+                      minHeight: isPhoneLayout ? "160px" : "148px",
                       boxShadow: isCurrentlyReading
                         ? "0 0 0 3px rgba(34, 197, 94, 0.12)"
                         : "none",
                       transition:
                         "border-color 140ms ease, box-shadow 140ms ease, background 140ms ease",
+                      touchAction: "manipulation",
                     }}
                   >
                     <div
                       style={{
                         display: "flex",
                         justifyContent: "space-between",
-                        alignItems: "start",
+                        alignItems: "flex-start",
                         gap: "10px",
                         flexWrap: "wrap",
                         minHeight: "44px",
@@ -2387,6 +2447,8 @@ function ReportsPanel({
                           gap: "6px",
                           minHeight: "44px",
                           alignContent: "start",
+                          minWidth: 0,
+                          flex: "1 1 220px",
                         }}
                       >
                         <strong
@@ -2394,6 +2456,7 @@ function ReportsPanel({
                             fontSize: "14px",
                             color: "#111827",
                             lineHeight: 1.5,
+                            wordBreak: "break-word",
                           }}
                         >
                           {item.title}
@@ -2402,6 +2465,7 @@ function ReportsPanel({
                           style={{
                             fontSize: "12px",
                             color: "#6b7280",
+                            wordBreak: "break-word",
                           }}
                         >
                           {item.source} ・ {item.createdAt}
@@ -2482,6 +2546,7 @@ function ReportsPanel({
                         fontSize: "13px",
                         lineHeight: 1.7,
                         color: "#475569",
+                        wordBreak: "break-word",
                       }}
                     >
                       {item.summary}
@@ -2549,7 +2614,7 @@ function ReportsPanel({
                 style={{
                   display: "grid",
                   gap: "10px",
-                  padding: "16px",
+                  padding: isPhoneLayout ? "14px" : "16px",
                   borderRadius: "14px",
                   border: "1px solid #e5e7eb",
                   background: "#f8fafc",
@@ -2559,7 +2624,7 @@ function ReportsPanel({
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
-                    alignItems: "start",
+                    alignItems: "flex-start",
                     gap: "10px",
                     flexWrap: "wrap",
                   }}
@@ -2568,14 +2633,17 @@ function ReportsPanel({
                     style={{
                       display: "grid",
                       gap: "6px",
+                      minWidth: 0,
+                      flex: "1 1 220px",
                     }}
                   >
                     <h3
                       style={{
                         margin: 0,
-                        fontSize: "18px",
+                        fontSize: isPhoneLayout ? "17px" : "18px",
                         lineHeight: 1.5,
                         color: "#0f172a",
+                        wordBreak: "break-word",
                       }}
                     >
                       {selectedReport.title}
@@ -2585,6 +2653,7 @@ function ReportsPanel({
                         margin: 0,
                         fontSize: "12px",
                         color: "#64748b",
+                        wordBreak: "break-word",
                       }}
                     >
                       {selectedReport.source} ・ {selectedReport.createdAt}
@@ -2604,6 +2673,7 @@ function ReportsPanel({
                     fontSize: "14px",
                     lineHeight: 1.8,
                     color: "#475569",
+                    wordBreak: "break-word",
                   }}
                 >
                   {selectedReport.summary}
@@ -2666,11 +2736,14 @@ function ReportsPanel({
                           isSelectedReportBeingRead
                             ? "#f0fdf4"
                             : "#ffffff",
-                        padding: "14px",
+                        padding: isPhoneLayout ? "16px 14px" : "14px",
                         cursor: "pointer",
                         color: "#0f172a",
                         fontSize: "15px",
                         lineHeight: 1.7,
+                        wordBreak: "break-word",
+                        minHeight: isPhoneLayout ? "64px" : undefined,
+                        touchAction: "manipulation",
                       }}
                     >
                       {selectedReport.title}
@@ -2710,11 +2783,14 @@ function ReportsPanel({
                           isSelectedReportBeingRead
                             ? "#f0fdf4"
                             : "#ffffff",
-                        padding: "14px",
+                        padding: isPhoneLayout ? "16px 14px" : "14px",
                         cursor: "pointer",
                         color: "#334155",
                         fontSize: "14px",
                         lineHeight: 1.8,
+                        wordBreak: "break-word",
+                        minHeight: isPhoneLayout ? "70px" : undefined,
+                        touchAction: "manipulation",
                       }}
                     >
                       {selectedReport.summary}
@@ -2785,10 +2861,12 @@ function ReportsPanel({
                               background: isCurrentParagraph
                                 ? "#f0fdf4"
                                 : "#ffffff",
-                              padding: "14px",
+                              padding: isPhoneLayout ? "16px 14px" : "14px",
                               cursor: "pointer",
                               display: "grid",
                               gap: "8px",
+                              minHeight: isPhoneLayout ? "90px" : undefined,
+                              touchAction: "manipulation",
                             }}
                           >
                             <div
@@ -2831,6 +2909,7 @@ function ReportsPanel({
                                 lineHeight: 1.85,
                                 color: "#334155",
                                 whiteSpace: "pre-wrap",
+                                wordBreak: "break-word",
                               }}
                             >
                               {paragraph}
@@ -2884,7 +2963,7 @@ function ReportsPanel({
             style={{
               display: "grid",
               gap: "10px",
-              padding: "14px",
+              padding: isPhoneLayout ? "12px" : "14px",
               borderRadius: "12px",
               border: "1px solid #e5e7eb",
               background: "#f8fafc",
@@ -2893,8 +2972,9 @@ function ReportsPanel({
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns:
-                  "minmax(180px, 1fr) minmax(180px, 1fr) auto",
+                gridTemplateColumns: isPhoneLayout
+                  ? "minmax(0, 1fr)"
+                  : "minmax(180px, 1fr) minmax(180px, 1fr) auto",
                 gap: "10px",
                 alignItems: "end",
               }}
@@ -2916,7 +2996,8 @@ function ReportsPanel({
                   placeholder={currentLanguageConfig.dictionarySourcePlaceholder}
                   style={{
                     width: "100%",
-                    padding: "10px 12px",
+                    padding: "12px",
+                    minHeight: "42px",
                     borderRadius: "10px",
                     border: "1px solid #d1d5db",
                     background: "#ffffff",
@@ -2944,7 +3025,8 @@ function ReportsPanel({
                   placeholder={currentLanguageConfig.dictionaryTargetPlaceholder}
                   style={{
                     width: "100%",
-                    padding: "10px 12px",
+                    padding: "12px",
+                    minHeight: "42px",
                     borderRadius: "10px",
                     border: "1px solid #d1d5db",
                     background: "#ffffff",
@@ -2959,8 +3041,8 @@ function ReportsPanel({
                 type="button"
                 onClick={handleDictionaryAdd}
                 style={{
-                  height: "40px",
-                  padding: "0 14px",
+                  minHeight: "42px",
+                  padding: "10px 14px",
                   borderRadius: "10px",
                   border: "1px solid #0ea5e9",
                   background: "#e0f2fe",
@@ -2968,6 +3050,8 @@ function ReportsPanel({
                   fontSize: "13px",
                   fontWeight: 700,
                   cursor: "pointer",
+                  width: isPhoneLayout ? "100%" : "auto",
+                  touchAction: "manipulation",
                 }}
               >
                 add entry
@@ -2995,9 +3079,9 @@ function ReportsPanel({
             style={{
               display: "grid",
               gap: "10px",
-              maxHeight: "320px",
+              maxHeight: isPhoneLayout ? "360px" : "320px",
               overflowY: "auto",
-              paddingRight: "4px",
+              paddingRight: isPhoneLayout ? "0" : "4px",
             }}
           >
             {activePronunciationDictionary.length > 0 ? (
@@ -3011,7 +3095,7 @@ function ReportsPanel({
                     style={{
                       display: "grid",
                       gap: "10px",
-                      padding: "12px 14px",
+                      padding: isPhoneLayout ? "14px 12px" : "12px 14px",
                       borderRadius: "12px",
                       border: "1px solid #e5e7eb",
                       background: "#ffffff",
@@ -3022,8 +3106,9 @@ function ReportsPanel({
                         <div
                           style={{
                             display: "grid",
-                            gridTemplateColumns:
-                              "minmax(180px, 1fr) minmax(180px, 1fr)",
+                            gridTemplateColumns: isPhoneLayout
+                              ? "minmax(0, 1fr)"
+                              : "minmax(180px, 1fr) minmax(180px, 1fr)",
                             gap: "10px",
                           }}
                         >
@@ -3045,7 +3130,8 @@ function ReportsPanel({
                               }
                               style={{
                                 width: "100%",
-                                padding: "10px 12px",
+                                padding: "12px",
+                                minHeight: "42px",
                                 borderRadius: "10px",
                                 border: "1px solid #d1d5db",
                                 background: "#ffffff",
@@ -3074,7 +3160,8 @@ function ReportsPanel({
                               }
                               style={{
                                 width: "100%",
-                                padding: "10px 12px",
+                                padding: "12px",
+                                minHeight: "42px",
                                 borderRadius: "10px",
                                 border: "1px solid #d1d5db",
                                 background: "#ffffff",
@@ -3092,15 +3179,15 @@ function ReportsPanel({
                             alignItems: "center",
                             gap: "8px",
                             flexWrap: "wrap",
-                            justifyContent: "flex-end",
+                            justifyContent: isPhoneLayout ? "stretch" : "flex-end",
                           }}
                         >
                           <button
                             type="button"
                             onClick={handleDictionaryEditSave}
                             style={{
-                              height: "36px",
-                              padding: "0 12px",
+                              minHeight: "40px",
+                              padding: "8px 12px",
                               borderRadius: "10px",
                               border: "1px solid #16a34a",
                               background: "#f0fdf4",
@@ -3108,6 +3195,8 @@ function ReportsPanel({
                               fontSize: "12px",
                               fontWeight: 700,
                               cursor: "pointer",
+                              width: isPhoneLayout ? "100%" : "auto",
+                              touchAction: "manipulation",
                             }}
                           >
                             save
@@ -3117,8 +3206,8 @@ function ReportsPanel({
                             type="button"
                             onClick={cancelDictionaryEditing}
                             style={{
-                              height: "36px",
-                              padding: "0 12px",
+                              minHeight: "40px",
+                              padding: "8px 12px",
                               borderRadius: "10px",
                               border: "1px solid #d1d5db",
                               background: "#ffffff",
@@ -3126,6 +3215,8 @@ function ReportsPanel({
                               fontSize: "12px",
                               fontWeight: 700,
                               cursor: "pointer",
+                              width: isPhoneLayout ? "100%" : "auto",
+                              touchAction: "manipulation",
                             }}
                           >
                             cancel
@@ -3199,15 +3290,15 @@ function ReportsPanel({
                             alignItems: "center",
                             gap: "8px",
                             flexWrap: "wrap",
-                            justifyContent: "flex-end",
+                            justifyContent: isPhoneLayout ? "stretch" : "flex-end",
                           }}
                         >
                           <button
                             type="button"
                             onClick={() => handleDictionaryEditStart(entry)}
                             style={{
-                              height: "36px",
-                              padding: "0 12px",
+                              minHeight: "40px",
+                              padding: "8px 12px",
                               borderRadius: "10px",
                               border: "1px solid #d1d5db",
                               background: "#ffffff",
@@ -3215,6 +3306,8 @@ function ReportsPanel({
                               fontSize: "12px",
                               fontWeight: 700,
                               cursor: "pointer",
+                              width: isPhoneLayout ? "100%" : "auto",
+                              touchAction: "manipulation",
                             }}
                           >
                             edit
@@ -3224,8 +3317,8 @@ function ReportsPanel({
                             type="button"
                             onClick={() => handleDictionaryRemove(entry)}
                             style={{
-                              height: "36px",
-                              padding: "0 12px",
+                              minHeight: "40px",
+                              padding: "8px 12px",
                               borderRadius: "10px",
                               border: "1px solid #fecaca",
                               background: "#fff1f2",
@@ -3233,6 +3326,8 @@ function ReportsPanel({
                               fontSize: "12px",
                               fontWeight: 700,
                               cursor: "pointer",
+                              width: isPhoneLayout ? "100%" : "auto",
+                              touchAction: "manipulation",
                             }}
                           >
                             delete
