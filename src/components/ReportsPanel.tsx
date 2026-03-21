@@ -28,10 +28,7 @@ type PronunciationEntry = {
 type ReaderLanguage = "ja" | "en";
 type DetectionConfidence = "high" | "medium" | "low";
 
-const playbackRates = [0.8, 1.0, 1.2, 1.5, 2.0] as const;
-const reportFilters: ReportFilter[] = ["all", "new", "reading", "archived"];
-
-type ReaderPlaybackRate = (typeof playbackRates)[number];
+type ReaderPlaybackRate = 0.8 | 1.0 | 1.2 | 1.5 | 2.0;
 type VoiceSelectionsByLanguage = Record<ReaderLanguage, string>;
 type PlaybackRatesByLanguage = Record<ReaderLanguage, ReaderPlaybackRate>;
 type PronunciationDictionaryByLanguage = Record<
@@ -39,11 +36,47 @@ type PronunciationDictionaryByLanguage = Record<
   PronunciationEntry[]
 >;
 
+type ReaderLanguageConfig = {
+  label: string;
+  fallbackUtteranceLang: string;
+  voiceLangPrefix: string;
+  dictionarySourcePlaceholder: string;
+  dictionaryTargetPlaceholder: string;
+};
+
 type DetectedLanguageSuggestion = {
   language: ReaderLanguage;
   confidence: DetectionConfidence;
   reason: string;
 };
+
+type ReaderSummaryItem = {
+  label: string;
+  value: string;
+  wide?: boolean;
+};
+
+const playbackRates: ReaderPlaybackRate[] = [0.8, 1.0, 1.2, 1.5, 2.0];
+const reportFilters: ReportFilter[] = ["all", "new", "reading", "archived"];
+
+const readerLanguageConfigs: Record<ReaderLanguage, ReaderLanguageConfig> = {
+  ja: {
+    label: "日本語",
+    fallbackUtteranceLang: "ja-JP",
+    voiceLangPrefix: "ja",
+    dictionarySourcePlaceholder: "DeepStream",
+    dictionaryTargetPlaceholder: "ディープストリーム",
+  },
+  en: {
+    label: "English",
+    fallbackUtteranceLang: "en-US",
+    voiceLangPrefix: "en",
+    dictionarySourcePlaceholder: "MVP",
+    dictionaryTargetPlaceholder: "M V P",
+  },
+};
+
+const readerLanguages = Object.keys(readerLanguageConfigs) as ReaderLanguage[];
 
 const PRONUNCIATION_DICTIONARY_STORAGE_KEY =
   "deepstream:report-pronunciation-dictionary";
@@ -53,6 +86,15 @@ const REPORT_READER_VOICE_SELECTIONS_STORAGE_KEY =
   "deepstream:report-reader-voice-selections";
 const REPORT_READER_PLAYBACK_RATES_STORAGE_KEY =
   "deepstream:report-reader-playback-rates";
+
+function mapReaderLanguages<T>(
+  mapper: (language: ReaderLanguage) => T
+): Record<ReaderLanguage, T> {
+  return readerLanguages.reduce((accumulator, language) => {
+    accumulator[language] = mapper(language);
+    return accumulator;
+  }, {} as Record<ReaderLanguage, T>);
+}
 
 const defaultPronunciationDictionaries: PronunciationDictionaryByLanguage = {
   ja: [
@@ -82,32 +124,12 @@ const defaultPronunciationDictionaries: PronunciationDictionaryByLanguage = {
   ],
 };
 
-const defaultVoiceSelections: VoiceSelectionsByLanguage = {
-  ja: "",
-  en: "",
-};
+const defaultVoiceSelections: VoiceSelectionsByLanguage = mapReaderLanguages(
+  () => ""
+);
 
-const defaultPlaybackRatesByLanguage: PlaybackRatesByLanguage = {
-  ja: 1.0,
-  en: 1.0,
-};
-
-const readerLanguageOptions: Array<{
-  value: ReaderLanguage;
-  label: string;
-  fallbackUtteranceLang: string;
-}> = [
-  {
-    value: "ja",
-    label: "日本語",
-    fallbackUtteranceLang: "ja-JP",
-  },
-  {
-    value: "en",
-    label: "English",
-    fallbackUtteranceLang: "en-US",
-  },
-];
+const defaultPlaybackRatesByLanguage: PlaybackRatesByLanguage =
+  mapReaderLanguages(() => 1.0);
 
 const statusStyles: Record<
   ReportStatus,
@@ -138,8 +160,6 @@ function splitBodyParagraphs(body: string) {
 }
 
 function buildReportSegments(report: ReportRecord): ReportSegment[] {
-  const bodyParagraphs = splitBodyParagraphs(report.body);
-
   return [
     {
       kind: "title",
@@ -149,7 +169,7 @@ function buildReportSegments(report: ReportRecord): ReportSegment[] {
       kind: "summary",
       text: report.summary,
     },
-    ...bodyParagraphs.map((paragraph) => ({
+    ...splitBodyParagraphs(report.body).map((paragraph) => ({
       kind: "body" as const,
       text: paragraph,
     })),
@@ -160,16 +180,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function isReaderLanguage(value: unknown): value is ReaderLanguage {
+  return readerLanguages.includes(value as ReaderLanguage);
+}
+
 function isValidPronunciationEntry(value: unknown): value is PronunciationEntry {
   return (
     isRecord(value) &&
     typeof value.source === "string" &&
     typeof value.target === "string"
   );
-}
-
-function isReaderLanguage(value: unknown): value is ReaderLanguage {
-  return value === "ja" || value === "en";
 }
 
 function isValidPlaybackRate(value: unknown): value is ReaderPlaybackRate {
@@ -224,6 +244,16 @@ function normalizePronunciationDictionaryField(
   return normalizePronunciationDictionary(validEntries);
 }
 
+function readStoredReaderLanguage(): ReaderLanguage {
+  const parsed = readStorageJSON<unknown>(
+    REPORT_READER_LANGUAGE_STORAGE_KEY,
+    DASHBOARD_STORAGE_NAMESPACE,
+    "ja"
+  );
+
+  return isReaderLanguage(parsed) ? parsed : "ja";
+}
+
 function readStoredPronunciationDictionaries(): PronunciationDictionaryByLanguage {
   const parsed = readStorageJSON<unknown>(
     PRONUNCIATION_DICTIONARY_STORAGE_KEY,
@@ -242,43 +272,17 @@ function readStoredPronunciationDictionaries(): PronunciationDictionaryByLanguag
   }
 
   if (!isRecord(parsed)) {
-    return {
-      ja: normalizePronunciationDictionary(defaultPronunciationDictionaries.ja),
-      en: normalizePronunciationDictionary(defaultPronunciationDictionaries.en),
-    };
+    return mapReaderLanguages((language) =>
+      normalizePronunciationDictionary(defaultPronunciationDictionaries[language])
+    );
   }
 
-  return {
-    ja: normalizePronunciationDictionaryField(
-      parsed.ja,
-      defaultPronunciationDictionaries.ja
-    ),
-    en: normalizePronunciationDictionaryField(
-      parsed.en,
-      defaultPronunciationDictionaries.en
-    ),
-  };
-}
-
-function readStoredReaderLanguage(): ReaderLanguage {
-  const parsed = readStorageJSON<unknown>(
-    REPORT_READER_LANGUAGE_STORAGE_KEY,
-    DASHBOARD_STORAGE_NAMESPACE,
-    "ja"
+  return mapReaderLanguages((language) =>
+    normalizePronunciationDictionaryField(
+      parsed[language],
+      defaultPronunciationDictionaries[language]
+    )
   );
-
-  return isReaderLanguage(parsed) ? parsed : "ja";
-}
-
-function normalizeVoiceSelections(value: unknown): VoiceSelectionsByLanguage {
-  if (!isRecord(value)) {
-    return defaultVoiceSelections;
-  }
-
-  return {
-    ja: typeof value.ja === "string" ? value.ja : defaultVoiceSelections.ja,
-    en: typeof value.en === "string" ? value.en : defaultVoiceSelections.en,
-  };
 }
 
 function readStoredVoiceSelections(): VoiceSelectionsByLanguage {
@@ -295,22 +299,13 @@ function readStoredVoiceSelections(): VoiceSelectionsByLanguage {
     };
   }
 
-  return normalizeVoiceSelections(parsed);
-}
-
-function normalizePlaybackRates(value: unknown): PlaybackRatesByLanguage {
-  if (!isRecord(value)) {
-    return defaultPlaybackRatesByLanguage;
+  if (!isRecord(parsed)) {
+    return defaultVoiceSelections;
   }
 
-  return {
-    ja: isValidPlaybackRate(value.ja)
-      ? value.ja
-      : defaultPlaybackRatesByLanguage.ja,
-    en: isValidPlaybackRate(value.en)
-      ? value.en
-      : defaultPlaybackRatesByLanguage.en,
-  };
+  return mapReaderLanguages((language) =>
+    typeof parsed[language] === "string" ? parsed[language] : ""
+  );
 }
 
 function readStoredPlaybackRates(): PlaybackRatesByLanguage {
@@ -327,7 +322,15 @@ function readStoredPlaybackRates(): PlaybackRatesByLanguage {
     };
   }
 
-  return normalizePlaybackRates(parsed);
+  if (!isRecord(parsed)) {
+    return defaultPlaybackRatesByLanguage;
+  }
+
+  return mapReaderLanguages((language) =>
+    isValidPlaybackRate(parsed[language])
+      ? parsed[language]
+      : defaultPlaybackRatesByLanguage[language]
+  );
 }
 
 function escapeRegExp(value: string) {
@@ -350,18 +353,22 @@ function sortVoices(voices: SpeechSynthesisVoice[]) {
     if (langComparison !== 0) {
       return langComparison;
     }
+
     return a.name.localeCompare(b.name);
   });
 }
 
 function formatVoiceLabel(voice: SpeechSynthesisVoice) {
   const parts = [voice.name];
+
   if (voice.lang) {
     parts.push(voice.lang);
   }
+
   if (voice.default) {
     parts.push("default");
   }
+
   return parts.join(" / ");
 }
 
@@ -369,24 +376,13 @@ function voiceMatchesLanguage(
   voice: SpeechSynthesisVoice,
   language: ReaderLanguage
 ) {
-  const lang = voice.lang.toLowerCase();
-
-  if (language === "ja") {
-    return lang.startsWith("ja");
-  }
-
-  if (language === "en") {
-    return lang.startsWith("en");
-  }
-
-  return false;
+  return voice.lang
+    .toLowerCase()
+    .startsWith(readerLanguageConfigs[language].voiceLangPrefix);
 }
 
 function getLanguageLabel(language: ReaderLanguage) {
-  return (
-    readerLanguageOptions.find((option) => option.value === language)?.label ??
-    language
-  );
+  return readerLanguageConfigs[language].label;
 }
 
 function getDetectionConfidenceLabel(confidence: DetectionConfidence) {
@@ -485,6 +481,10 @@ function ReportsPanel({
     useState<VoiceSelectionsByLanguage>(() => readStoredVoiceSelections());
   const [selectedPlaybackRates, setSelectedPlaybackRates] =
     useState<PlaybackRatesByLanguage>(() => readStoredPlaybackRates());
+  const [pronunciationDictionaries, setPronunciationDictionaries] =
+    useState<PronunciationDictionaryByLanguage>(() =>
+      readStoredPronunciationDictionaries()
+    );
   const [availableVoices, setAvailableVoices] = useState<
     SpeechSynthesisVoice[]
   >([]);
@@ -497,10 +497,6 @@ function ReportsPanel({
 
   const [reportFilter, setReportFilter] = useState<ReportFilter>("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [pronunciationDictionaries, setPronunciationDictionaries] =
-    useState<PronunciationDictionaryByLanguage>(() =>
-      readStoredPronunciationDictionaries()
-    );
   const [dictionarySourceInput, setDictionarySourceInput] = useState("");
   const [dictionaryTargetInput, setDictionaryTargetInput] = useState("");
   const [dictionaryError, setDictionaryError] = useState<string | null>(null);
@@ -524,11 +520,15 @@ function ReportsPanel({
   const activeReportIdRef = useRef<string | null>(null);
   const playbackSessionIdRef = useRef(0);
   const autoDetectedReportIdRef = useRef<string | null>(null);
+  const manualReaderLanguageByReportRef = useRef<
+    Partial<Record<string, ReaderLanguage>>
+  >({});
 
   const speechSupported =
     typeof window !== "undefined" && "speechSynthesis" in window;
 
   const playbackRate = selectedPlaybackRates[selectedReaderLanguage];
+  const currentLanguageConfig = readerLanguageConfigs[selectedReaderLanguage];
 
   useEffect(() => {
     pronunciationDictionaryRef.current =
@@ -542,6 +542,35 @@ function ReportsPanel({
       DASHBOARD_STORAGE_NAMESPACE
     );
   }, [pronunciationDictionaries]);
+
+  useEffect(() => {
+    writeStorageJSON(
+      REPORT_READER_LANGUAGE_STORAGE_KEY,
+      selectedReaderLanguage,
+      DASHBOARD_STORAGE_NAMESPACE
+    );
+    selectedReaderLanguageRef.current = selectedReaderLanguage;
+  }, [selectedReaderLanguage]);
+
+  useEffect(() => {
+    writeStorageJSON(
+      REPORT_READER_VOICE_SELECTIONS_STORAGE_KEY,
+      selectedVoiceSelections,
+      DASHBOARD_STORAGE_NAMESPACE
+    );
+  }, [selectedVoiceSelections]);
+
+  useEffect(() => {
+    writeStorageJSON(
+      REPORT_READER_PLAYBACK_RATES_STORAGE_KEY,
+      selectedPlaybackRates,
+      DASHBOARD_STORAGE_NAMESPACE
+    );
+  }, [selectedPlaybackRates]);
+
+  useEffect(() => {
+    playbackRateRef.current = playbackRate;
+  }, [playbackRate]);
 
   const filteredItems = useMemo(() => {
     const normalizedSearchTerm = searchTerm.trim().toLowerCase();
@@ -577,27 +606,37 @@ function ReportsPanel({
     );
   }, [filteredItems, selectedReportId]);
 
-  const detectedLanguageSuggestion = useMemo(() => {
-    return detectReaderLanguageFromReport(selectedReport);
-  }, [selectedReport]);
+  const selectedReportIdValue = selectedReport?.id ?? null;
 
-  const filteredVoices = useMemo(() => {
-    return availableVoices.filter((voice) =>
-      voiceMatchesLanguage(voice, selectedReaderLanguage)
-    );
-  }, [availableVoices, selectedReaderLanguage]);
+  const detectedLanguageSuggestion = useMemo(
+    () => detectReaderLanguageFromReport(selectedReport),
+    [selectedReport]
+  );
 
-  const activePronunciationDictionary = useMemo(() => {
-    return pronunciationDictionaries[selectedReaderLanguage] ?? [];
-  }, [pronunciationDictionaries, selectedReaderLanguage]);
+  const filteredVoices = useMemo(
+    () =>
+      availableVoices.filter((voice) =>
+        voiceMatchesLanguage(voice, selectedReaderLanguage)
+      ),
+    [availableVoices, selectedReaderLanguage]
+  );
+
+  const activePronunciationDictionary = useMemo(
+    () => pronunciationDictionaries[selectedReaderLanguage] ?? [],
+    [pronunciationDictionaries, selectedReaderLanguage]
+  );
 
   const selectedVoiceURI = selectedVoiceSelections[selectedReaderLanguage];
 
-  const selectedVoice = useMemo(() => {
-    return (
-      filteredVoices.find((voice) => voice.voiceURI === selectedVoiceURI) ?? null
-    );
-  }, [filteredVoices, selectedVoiceURI]);
+  const selectedVoice = useMemo(
+    () =>
+      filteredVoices.find((voice) => voice.voiceURI === selectedVoiceURI) ?? null,
+    [filteredVoices, selectedVoiceURI]
+  );
+
+  useEffect(() => {
+    selectedVoiceRef.current = selectedVoice;
+  }, [selectedVoice]);
 
   const selectedBodyParagraphs = useMemo(() => {
     if (!selectedReport) {
@@ -625,6 +664,47 @@ function ReportsPanel({
     [items]
   );
 
+  const updateSelectedReaderLanguage = (
+    nextLanguage: ReaderLanguage,
+    mode: "auto" | "manual" = "manual"
+  ) => {
+    if (mode === "manual" && selectedReportIdValue) {
+      manualReaderLanguageByReportRef.current[selectedReportIdValue] = nextLanguage;
+    }
+
+    setSelectedReaderLanguage(nextLanguage);
+  };
+
+  const updateSelectedVoiceForLanguage = (
+    language: ReaderLanguage,
+    voiceURI: string
+  ) => {
+    setSelectedVoiceSelections((currentSelections) => ({
+      ...currentSelections,
+      [language]: voiceURI,
+    }));
+  };
+
+  const updatePlaybackRateForLanguage = (
+    language: ReaderLanguage,
+    nextRate: ReaderPlaybackRate
+  ) => {
+    setSelectedPlaybackRates((currentRates) => ({
+      ...currentRates,
+      [language]: nextRate,
+    }));
+  };
+
+  const updatePronunciationDictionaryForLanguage = (
+    language: ReaderLanguage,
+    nextEntries: PronunciationEntry[]
+  ) => {
+    setPronunciationDictionaries((currentDictionaries) => ({
+      ...currentDictionaries,
+      [language]: nextEntries,
+    }));
+  };
+
   const resetDictionaryInputs = () => {
     setDictionarySourceInput("");
     setDictionaryTargetInput("");
@@ -641,49 +721,13 @@ function ReportsPanel({
       return;
     }
 
-    setSelectedReaderLanguage(detectedLanguageSuggestion.language);
+    updateSelectedReaderLanguage(detectedLanguageSuggestion.language, "manual");
   };
 
   useEffect(() => {
-    writeStorageJSON(
-      REPORT_READER_LANGUAGE_STORAGE_KEY,
-      selectedReaderLanguage,
-      DASHBOARD_STORAGE_NAMESPACE
-    );
-    selectedReaderLanguageRef.current = selectedReaderLanguage;
-  }, [selectedReaderLanguage]);
-
-  useEffect(() => {
-    writeStorageJSON(
-      REPORT_READER_VOICE_SELECTIONS_STORAGE_KEY,
-      selectedVoiceSelections,
-      DASHBOARD_STORAGE_NAMESPACE
-    );
-  }, [selectedVoiceSelections]);
-
-  useEffect(() => {
-    writeStorageJSON(
-      REPORT_READER_PLAYBACK_RATES_STORAGE_KEY,
-      selectedPlaybackRates,
-      DASHBOARD_STORAGE_NAMESPACE
-    );
-  }, [selectedPlaybackRates]);
-
-  useEffect(() => {
-    selectedVoiceRef.current = selectedVoice;
-  }, [selectedVoice]);
-
-  useEffect(() => {
-    playbackRateRef.current = playbackRate;
-  }, [playbackRate]);
-
-  useEffect(() => {
     setDictionaryError(null);
-    setEditingDictionaryKey(null);
-    setEditingDictionarySource("");
-    setEditingDictionaryTarget("");
-    setDictionarySourceInput("");
-    setDictionaryTargetInput("");
+    cancelDictionaryEditing();
+    resetDictionaryInputs();
   }, [selectedReaderLanguage]);
 
   useEffect(() => {
@@ -694,8 +738,7 @@ function ReportsPanel({
     const synthesis = window.speechSynthesis;
 
     const loadVoices = () => {
-      const voices = sortVoices(synthesis.getVoices());
-      setAvailableVoices(voices);
+      setAvailableVoices(sortVoices(synthesis.getVoices()));
     };
 
     loadVoices();
@@ -717,41 +760,35 @@ function ReportsPanel({
   }, [speechSupported]);
 
   useEffect(() => {
-    if (!selectedReport) {
+    if (!selectedReportIdValue) {
       autoDetectedReportIdRef.current = null;
       return;
     }
 
-    if (autoDetectedReportIdRef.current === selectedReport.id) {
+    if (autoDetectedReportIdRef.current === selectedReportIdValue) {
       return;
     }
 
-    autoDetectedReportIdRef.current = selectedReport.id;
+    autoDetectedReportIdRef.current = selectedReportIdValue;
+
+    const manualLanguage =
+      manualReaderLanguageByReportRef.current[selectedReportIdValue];
+
+    if (manualLanguage) {
+      setSelectedReaderLanguage(manualLanguage);
+      return;
+    }
 
     if (detectedLanguageSuggestion) {
-      setSelectedReaderLanguage(detectedLanguageSuggestion.language);
+      updateSelectedReaderLanguage(detectedLanguageSuggestion.language, "auto");
     }
-  }, [selectedReport?.id, detectedLanguageSuggestion, selectedReport]);
+  }, [selectedReportIdValue, detectedLanguageSuggestion]);
 
   const handleDictionaryEditStart = (entry: PronunciationEntry) => {
     setEditingDictionaryKey(entry.source.toLowerCase());
     setEditingDictionarySource(entry.source);
     setEditingDictionaryTarget(entry.target);
     setDictionaryError(null);
-  };
-
-  const handleVoiceSelectionChange = (voiceURI: string) => {
-    setSelectedVoiceSelections((currentSelections) => ({
-      ...currentSelections,
-      [selectedReaderLanguage]: voiceURI,
-    }));
-  };
-
-  const handlePlaybackRateChange = (nextRate: ReaderPlaybackRate) => {
-    setSelectedPlaybackRates((currentRates) => ({
-      ...currentRates,
-      [selectedReaderLanguage]: nextRate,
-    }));
   };
 
   const upsertPronunciationEntry = (
@@ -787,10 +824,7 @@ function ReportsPanel({
       },
     ]);
 
-    setPronunciationDictionaries((currentDictionaries) => ({
-      ...currentDictionaries,
-      [selectedReaderLanguage]: nextEntries,
-    }));
+    updatePronunciationDictionaryForLanguage(selectedReaderLanguage, nextEntries);
     setDictionaryError(null);
     return true;
   };
@@ -836,20 +870,16 @@ function ReportsPanel({
       return;
     }
 
-    setPronunciationDictionaries((currentDictionaries) => ({
-      ...currentDictionaries,
-      [selectedReaderLanguage]: currentDictionaries[
-        selectedReaderLanguage
-      ].filter(
+    updatePronunciationDictionaryForLanguage(
+      selectedReaderLanguage,
+      activePronunciationDictionary.filter(
         (currentEntry) =>
           currentEntry.source.toLowerCase() !== entry.source.toLowerCase()
-      ),
-    }));
+      )
+    );
 
     if (editingDictionaryKey === entry.source.toLowerCase()) {
-      setEditingDictionaryKey(null);
-      setEditingDictionarySource("");
-      setEditingDictionaryTarget("");
+      cancelDictionaryEditing();
     }
 
     setDictionaryError(null);
@@ -897,11 +927,9 @@ function ReportsPanel({
     const utterance = new SpeechSynthesisUtterance(
       applyPronunciationDictionary(segment.text, pronunciationDictionaryRef.current)
     );
+
     utterance.rate = playbackRateRef.current;
-    utterance.lang =
-      readerLanguageOptions.find(
-        (option) => option.value === selectedReaderLanguageRef.current
-      )?.fallbackUtteranceLang ?? "ja-JP";
+    utterance.lang = currentLanguageConfig.fallbackUtteranceLang;
 
     if (selectedVoiceRef.current) {
       utterance.voice = selectedVoiceRef.current;
@@ -963,9 +991,7 @@ function ReportsPanel({
       return;
     }
 
-    const segments = buildReportSegments(selectedReport);
-
-    if (segmentIndex < 0 || segmentIndex >= segments.length) {
+    if (segmentIndex < 0 || segmentIndex >= selectedSegments.length) {
       return;
     }
 
@@ -974,7 +1000,7 @@ function ReportsPanel({
 
     window.speechSynthesis.cancel();
     activeReportIdRef.current = selectedReport.id;
-    segmentQueueRef.current = segments;
+    segmentQueueRef.current = selectedSegments;
     setCurrentSegmentIndex(segmentIndex);
     speakSegmentAt(sessionId, segmentIndex);
   };
@@ -1029,10 +1055,10 @@ function ReportsPanel({
       return;
     }
 
-    if (selectedReport?.id !== readingReportId) {
+    if (selectedReportIdValue !== readingReportId) {
       stopReading();
     }
-  }, [selectedReport?.id, readingReportId, isReading]);
+  }, [selectedReportIdValue, readingReportId, isReading]);
 
   const readingStatusLabel = !speechSupported
     ? "speech unavailable"
@@ -1099,11 +1125,7 @@ function ReportsPanel({
       ? `selected report: ${selectedReport.title}`
       : "selected report ready";
 
-  const readerSummaryItems: Array<{
-    label: string;
-    value: string;
-    wide?: boolean;
-  }> = [
+  const readerSummaryItems: ReaderSummaryItem[] = [
     {
       label: "language",
       value: currentLanguageLabel,
@@ -1449,7 +1471,8 @@ function ReportsPanel({
             <select
               value={playbackRate}
               onChange={(event) =>
-                handlePlaybackRateChange(
+                updatePlaybackRateForLanguage(
+                  selectedReaderLanguage,
                   Number(event.target.value) as ReaderPlaybackRate
                 )
               }
@@ -1482,7 +1505,10 @@ function ReportsPanel({
             <select
               value={selectedReaderLanguage}
               onChange={(event) =>
-                setSelectedReaderLanguage(event.target.value as ReaderLanguage)
+                updateSelectedReaderLanguage(
+                  event.target.value as ReaderLanguage,
+                  "manual"
+                )
               }
               style={{
                 padding: "8px 10px",
@@ -1493,9 +1519,9 @@ function ReportsPanel({
                 fontSize: "13px",
               }}
             >
-              {readerLanguageOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+              {readerLanguages.map((language) => (
+                <option key={language} value={language}>
+                  {readerLanguageConfigs[language].label}
                 </option>
               ))}
             </select>
@@ -1512,7 +1538,12 @@ function ReportsPanel({
 
             <select
               value={selectedVoiceURI}
-              onChange={(event) => handleVoiceSelectionChange(event.target.value)}
+              onChange={(event) =>
+                updateSelectedVoiceForLanguage(
+                  selectedReaderLanguage,
+                  event.target.value
+                )
+              }
               disabled={!speechSupported}
               style={{
                 padding: "8px 10px",
@@ -2268,9 +2299,7 @@ function ReportsPanel({
                   type="text"
                   value={dictionarySourceInput}
                   onChange={(event) => setDictionarySourceInput(event.target.value)}
-                  placeholder={
-                    selectedReaderLanguage === "ja" ? "DeepStream" : "MVP"
-                  }
+                  placeholder={currentLanguageConfig.dictionarySourcePlaceholder}
                   style={{
                     width: "100%",
                     padding: "10px 12px",
@@ -2298,11 +2327,7 @@ function ReportsPanel({
                   type="text"
                   value={dictionaryTargetInput}
                   onChange={(event) => setDictionaryTargetInput(event.target.value)}
-                  placeholder={
-                    selectedReaderLanguage === "ja"
-                      ? "ディープストリーム"
-                      : "M V P"
-                  }
+                  placeholder={currentLanguageConfig.dictionaryTargetPlaceholder}
                   style={{
                     width: "100%",
                     padding: "10px 12px",
