@@ -26,6 +26,7 @@ type PronunciationEntry = {
 };
 
 type ReaderLanguage = "ja" | "en";
+type DetectionConfidence = "high" | "medium" | "low";
 
 const playbackRates = [0.8, 1.0, 1.2, 1.5, 2.0] as const;
 const reportFilters: ReportFilter[] = ["all", "new", "reading", "archived"];
@@ -37,6 +38,12 @@ type PronunciationDictionaryByLanguage = Record<
   ReaderLanguage,
   PronunciationEntry[]
 >;
+
+type DetectedLanguageSuggestion = {
+  language: ReaderLanguage;
+  confidence: DetectionConfidence;
+  reason: string;
+};
 
 const PRONUNCIATION_DICTIONARY_STORAGE_KEY =
   "deepstream:report-pronunciation-dictionary";
@@ -377,6 +384,95 @@ function getFallbackUtteranceLang(language: ReaderLanguage) {
   );
 }
 
+function getLanguageLabel(language: ReaderLanguage) {
+  return (
+    readerLanguageOptions.find((option) => option.value === language)?.label ??
+    "日本語"
+  );
+}
+
+function getDetectionConfidenceLabel(confidence: DetectionConfidence) {
+  if (confidence === "high") {
+    return "high";
+  }
+
+  if (confidence === "medium") {
+    return "medium";
+  }
+
+  return "low";
+}
+
+function detectReaderLanguageFromReport(
+  report: ReportRecord | null
+): DetectedLanguageSuggestion | null {
+  if (!report) {
+    return null;
+  }
+
+  const text = `${report.title}\n${report.summary}\n${report.body}`.trim();
+
+  if (text.length === 0) {
+    return null;
+  }
+
+  const japaneseChars =
+    text.match(/[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/g)?.length ?? 0;
+  const englishLetters = text.match(/[A-Za-z]/g)?.length ?? 0;
+  const englishWords =
+    text.match(/\b[A-Za-z][A-Za-z'-]{1,}\b/g)?.length ?? 0;
+
+  if (japaneseChars >= 12 && japaneseChars >= englishLetters * 0.4) {
+    return {
+      language: "ja",
+      confidence: "high",
+      reason: `日本語文字が多く検出されました (${japaneseChars} chars)。`,
+    };
+  }
+
+  if (englishWords >= 10 && japaneseChars <= 6) {
+    return {
+      language: "en",
+      confidence: "high",
+      reason: `英単語が多く検出されました (${englishWords} words)。`,
+    };
+  }
+
+  if (japaneseChars >= 6 && japaneseChars > englishLetters) {
+    return {
+      language: "ja",
+      confidence: "medium",
+      reason: `日本語文字が英字より優勢です (${japaneseChars} vs ${englishLetters})。`,
+    };
+  }
+
+  if (englishWords >= 5 && englishLetters > japaneseChars * 2) {
+    return {
+      language: "en",
+      confidence: "medium",
+      reason: `英字と英単語が優勢です (${englishWords} words)。`,
+    };
+  }
+
+  if (japaneseChars > 0 && englishWords === 0) {
+    return {
+      language: "ja",
+      confidence: "low",
+      reason: "日本語文字が検出され、英単語はほぼ見当たりません。",
+    };
+  }
+
+  if (englishWords >= 3 && japaneseChars === 0) {
+    return {
+      language: "en",
+      confidence: "low",
+      reason: "英単語が検出され、日本語文字は見当たりません。",
+    };
+  }
+
+  return null;
+}
+
 function ReportsPanel({
   items,
   selectedReportId,
@@ -429,11 +525,50 @@ function ReportsPanel({
   const playbackRateRef = useRef<ReaderPlaybackRate>(
     selectedPlaybackRates[selectedReaderLanguage]
   );
+  const autoDetectedReportIdRef = useRef<string | null>(null);
 
   const speechSupported =
     typeof window !== "undefined" && "speechSynthesis" in window;
 
   const playbackRate = selectedPlaybackRates[selectedReaderLanguage];
+
+  const filteredItems = useMemo(() => {
+    const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+
+    return items.filter((item) => {
+      const matchesFilter =
+        reportFilter === "all" ? true : item.status === reportFilter;
+
+      const matchesSearch =
+        normalizedSearchTerm.length === 0
+          ? true
+          : `${item.title} ${item.source} ${item.summary} ${item.body}`
+              .toLowerCase()
+              .includes(normalizedSearchTerm);
+
+      return matchesFilter && matchesSearch;
+    });
+  }, [items, reportFilter, searchTerm]);
+
+  const selectedReport = useMemo(() => {
+    if (filteredItems.length === 0) {
+      return null;
+    }
+
+    if (!selectedReportId) {
+      return filteredItems[0] ?? null;
+    }
+
+    return (
+      filteredItems.find((item) => item.id === selectedReportId) ??
+      filteredItems[0] ??
+      null
+    );
+  }, [filteredItems, selectedReportId]);
+
+  const detectedLanguageSuggestion = useMemo(() => {
+    return detectReaderLanguageFromReport(selectedReport);
+  }, [selectedReport]);
 
   const filteredVoices = useMemo(() => {
     return availableVoices.filter((voice) =>
@@ -452,6 +587,32 @@ function ReportsPanel({
       filteredVoices.find((voice) => voice.voiceURI === selectedVoiceURI) ?? null
     );
   }, [filteredVoices, selectedVoiceURI]);
+
+  const selectedBodyParagraphs = useMemo(() => {
+    if (!selectedReport) {
+      return [];
+    }
+
+    return splitBodyParagraphs(selectedReport.body);
+  }, [selectedReport]);
+
+  const selectedSegments = useMemo(() => {
+    if (!selectedReport) {
+      return [];
+    }
+
+    return buildReportSegments(selectedReport);
+  }, [selectedReport]);
+
+  const filterCounts = useMemo(
+    () => ({
+      all: items.length,
+      new: items.filter((item) => item.status === "new").length,
+      reading: items.filter((item) => item.status === "reading").length,
+      archived: items.filter((item) => item.status === "archived").length,
+    }),
+    [items]
+  );
 
   useEffect(() => {
     pronunciationDictionariesRef.current = pronunciationDictionaries;
@@ -535,65 +696,22 @@ function ReportsPanel({
     };
   }, [speechSupported]);
 
-  const filteredItems = useMemo(() => {
-    const normalizedSearchTerm = searchTerm.trim().toLowerCase();
-
-    return items.filter((item) => {
-      const matchesFilter =
-        reportFilter === "all" ? true : item.status === reportFilter;
-
-      const matchesSearch =
-        normalizedSearchTerm.length === 0
-          ? true
-          : `${item.title} ${item.source} ${item.summary} ${item.body}`
-              .toLowerCase()
-              .includes(normalizedSearchTerm);
-
-      return matchesFilter && matchesSearch;
-    });
-  }, [items, reportFilter, searchTerm]);
-
-  const selectedReport = useMemo(() => {
-    if (filteredItems.length === 0) {
-      return null;
-    }
-
-    if (!selectedReportId) {
-      return filteredItems[0] ?? null;
-    }
-
-    return (
-      filteredItems.find((item) => item.id === selectedReportId) ??
-      filteredItems[0] ??
-      null
-    );
-  }, [filteredItems, selectedReportId]);
-
-  const selectedBodyParagraphs = useMemo(() => {
+  useEffect(() => {
     if (!selectedReport) {
-      return [];
+      autoDetectedReportIdRef.current = null;
+      return;
     }
 
-    return splitBodyParagraphs(selectedReport.body);
-  }, [selectedReport]);
-
-  const selectedSegments = useMemo(() => {
-    if (!selectedReport) {
-      return [];
+    if (autoDetectedReportIdRef.current === selectedReport.id) {
+      return;
     }
 
-    return buildReportSegments(selectedReport);
-  }, [selectedReport]);
+    autoDetectedReportIdRef.current = selectedReport.id;
 
-  const filterCounts = useMemo(
-    () => ({
-      all: items.length,
-      new: items.filter((item) => item.status === "new").length,
-      reading: items.filter((item) => item.status === "reading").length,
-      archived: items.filter((item) => item.status === "archived").length,
-    }),
-    [items]
-  );
+    if (detectedLanguageSuggestion) {
+      setSelectedReaderLanguage(detectedLanguageSuggestion.language);
+    }
+  }, [selectedReport?.id, detectedLanguageSuggestion, selectedReport]);
 
   const handleDictionaryEditStart = (entry: PronunciationEntry) => {
     setEditingDictionaryKey(entry.source.toLowerCase());
@@ -718,6 +836,14 @@ function ReportsPanel({
     }
 
     setDictionaryError(null);
+  };
+
+  const applyDetectedLanguageSuggestion = () => {
+    if (!detectedLanguageSuggestion) {
+      return;
+    }
+
+    setSelectedReaderLanguage(detectedLanguageSuggestion.language);
   };
 
   const finishReading = (sessionId?: number) => {
@@ -940,10 +1066,7 @@ function ReportsPanel({
     currentSegmentIndex != null &&
     currentSegmentIndex < selectedSegments.length - 1;
 
-  const currentLanguageLabel =
-    readerLanguageOptions.find(
-      (option) => option.value === selectedReaderLanguage
-    )?.label ?? "日本語";
+  const currentLanguageLabel = getLanguageLabel(selectedReaderLanguage);
 
   const voiceStatusLabel = !speechSupported
     ? "speech unavailable"
@@ -954,6 +1077,18 @@ function ReportsPanel({
         : selectedVoiceURI
           ? "stored voice unavailable"
           : `default ${currentLanguageLabel} voice`;
+
+  const detectedLanguageLabel = detectedLanguageSuggestion
+    ? getLanguageLabel(detectedLanguageSuggestion.language)
+    : null;
+
+  const detectedConfidenceLabel = detectedLanguageSuggestion
+    ? getDetectionConfidenceLabel(detectedLanguageSuggestion.confidence)
+    : null;
+
+  const isDetectedLanguageDifferent =
+    Boolean(detectedLanguageSuggestion) &&
+    detectedLanguageSuggestion?.language !== selectedReaderLanguage;
 
   return (
     <div
@@ -1108,6 +1243,75 @@ function ReportsPanel({
           >
             speed: {playbackRate.toFixed(1)}x for {currentLanguageLabel}
           </p>
+
+          {detectedLanguageSuggestion ? (
+            <div
+              style={{
+                display: "grid",
+                gap: "8px",
+                marginTop: "4px",
+                padding: "10px 12px",
+                borderRadius: "12px",
+                border: "1px solid #dbeafe",
+                background: "#f8fbff",
+              }}
+            >
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "12px",
+                  lineHeight: 1.6,
+                  color: "#1e3a8a",
+                }}
+              >
+                auto-detect: {detectedLanguageLabel} / {detectedConfidenceLabel}
+              </p>
+
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "12px",
+                  lineHeight: 1.6,
+                  color: "#64748b",
+                }}
+              >
+                {detectedLanguageSuggestion.reason}
+              </p>
+
+              {isDetectedLanguageDifferent && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={applyDetectedLanguageSuggestion}
+                    style={{
+                      height: "34px",
+                      padding: "0 12px",
+                      borderRadius: "10px",
+                      border: "1px solid #93c5fd",
+                      background: "#eff6ff",
+                      color: "#1d4ed8",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    use detected language ({detectedLanguageLabel})
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p
+              style={{
+                margin: 0,
+                fontSize: "12px",
+                lineHeight: 1.6,
+                color: "#94a3b8",
+              }}
+            >
+              auto-detect: current report から言語を明確に判定できませんでした。
+            </p>
+          )}
         </div>
 
         <div
