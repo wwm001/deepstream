@@ -12,7 +12,6 @@ const sectionMeta: Record<
   NavigationSection,
   {
     shortLabel: string;
-    note: string;
     color: string;
     background: string;
     border: string;
@@ -21,7 +20,6 @@ const sectionMeta: Record<
 > = {
   ホーム: {
     shortLabel: "HOME",
-    note: "全体俯瞰と主要信号を確認する司令室です。",
     color: "#1d4ed8",
     background: "#eff6ff",
     border: "#bfdbfe",
@@ -29,7 +27,6 @@ const sectionMeta: Record<
   },
   ストリーム: {
     shortLabel: "STREAM",
-    note: "進行イベントの流れを扱う時系列パネルです。",
     color: "#047857",
     background: "#ecfdf5",
     border: "#a7f3d0",
@@ -37,7 +34,6 @@ const sectionMeta: Record<
   },
   ライブラリ: {
     shortLabel: "LIBRARY",
-    note: "再利用資産の棚卸しと検索を行う区画です。",
     color: "#b45309",
     background: "#fffbeb",
     border: "#fde68a",
@@ -45,7 +41,6 @@ const sectionMeta: Record<
   },
   レポート: {
     shortLabel: "REPORTS",
-    note: "完成レポートを読み込み、本文を確認する読書区画です。",
     color: "#0f766e",
     background: "#ecfeff",
     border: "#a5f3fc",
@@ -53,7 +48,6 @@ const sectionMeta: Record<
   },
   設定: {
     shortLabel: "SETTINGS",
-    note: "状態監視と切り替えを行う監視区画です。",
     color: "#6d28d9",
     background: "#f5f3ff",
     border: "#ddd6fe",
@@ -69,49 +63,46 @@ function Sidebar({
     <aside
       style={{
         display: "grid",
-        gap: "14px",
+        gap: "12px",
       }}
     >
-      <section
+      <div
         style={{
-          padding: "16px 18px",
-          borderRadius: "14px",
-          border: "1px solid #dbe4f0",
-          background:
-            "linear-gradient(135deg, #ffffff 0%, #f8fafc 48%, #eef6ff 100%)",
-          boxShadow: "0 8px 18px rgba(15, 23, 42, 0.04)",
+          display: "grid",
+          gap: "4px",
+          padding: "4px 2px 8px",
         }}
       >
         <p
           style={{
-            margin: "0 0 8px 0",
+            margin: 0,
             fontSize: "11px",
             fontWeight: 700,
             letterSpacing: "0.08em",
             textTransform: "uppercase",
-            color: "#475569",
+            color: "#64748b",
           }}
         >
-          Navigation Console
+          Sections
         </p>
 
         <p
           style={{
             margin: 0,
-            fontSize: "14px",
-            lineHeight: 1.7,
-            color: "#0f172a",
+            fontSize: "13px",
+            lineHeight: 1.6,
+            color: "#475569",
             fontWeight: 600,
           }}
         >
-          現在地を確認しながら、目的のセクションへ安全に移動できます。
+          セクションをすばやく切り替えます。
         </p>
-      </section>
+      </div>
 
       <div
         style={{
           display: "grid",
-          gap: "10px",
+          gap: "8px",
         }}
       >
         {navigationItems.map((item) => {
@@ -128,10 +119,13 @@ function Sidebar({
                 position: "relative",
                 overflow: "hidden",
                 textAlign: "left",
-                display: "grid",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
                 gap: "12px",
                 width: "100%",
-                padding: "14px 14px 14px 18px",
+                minHeight: "60px",
+                padding: "12px 14px",
                 borderRadius: "14px",
                 border: `1px solid ${isActive ? meta.border : "#e5e7eb"}`,
                 background: isActive ? meta.background : "#ffffff",
@@ -139,8 +133,7 @@ function Sidebar({
                   ? "0 10px 18px rgba(15, 23, 42, 0.06)"
                   : "0 2px 8px rgba(15, 23, 42, 0.03)",
                 cursor: "pointer",
-                transition:
-                  "transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease, background 140ms ease",
+                touchAction: "manipulation",
               }}
             >
               <span
@@ -148,7 +141,7 @@ function Sidebar({
                 style={{
                   position: "absolute",
                   inset: "0 auto 0 0",
-                  width: "6px",
+                  width: "5px",
                   background: isActive ? meta.accent : "#cbd5e1",
                 }}
               />
@@ -156,70 +149,66 @@ function Sidebar({
               <div
                 style={{
                   display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
+                  alignItems: "center",
                   gap: "10px",
+                  minWidth: 0,
+                  flex: "1 1 auto",
                 }}
               >
-                <div>
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: "10px",
-                      fontWeight: 700,
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                      color: isActive ? meta.color : "#64748b",
-                    }}
-                  >
-                    {meta.shortLabel}
-                  </p>
-
-                  <p
-                    style={{
-                      margin: "8px 0 0 0",
-                      fontSize: "20px",
-                      lineHeight: 1.15,
-                      fontWeight: 800,
-                      color: "#111827",
-                    }}
-                  >
-                    {item}
-                  </p>
-                </div>
-
                 <span
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    minWidth: "58px",
-                    padding: "4px 8px",
+                    minWidth: "64px",
+                    padding: "5px 8px",
                     borderRadius: "999px",
-                    background: isActive ? "#ffffff" : "#f8fafc",
                     border: `1px solid ${isActive ? meta.border : "#e5e7eb"}`,
+                    background: isActive ? "#ffffff" : "#f8fafc",
+                    color: isActive ? meta.color : "#64748b",
                     fontSize: "10px",
                     fontWeight: 700,
-                    letterSpacing: "0.05em",
+                    letterSpacing: "0.06em",
                     textTransform: "uppercase",
-                    color: isActive ? meta.color : "#64748b",
+                    flexShrink: 0,
                   }}
                 >
-                  {isActive ? "active" : "open"}
+                  {meta.shortLabel}
+                </span>
+
+                <span
+                  style={{
+                    fontSize: "17px",
+                    lineHeight: 1.2,
+                    fontWeight: 800,
+                    color: "#111827",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {item}
                 </span>
               </div>
 
-              <p
+              <span
                 style={{
-                  margin: 0,
-                  fontSize: "13px",
-                  lineHeight: 1.65,
-                  color: "#334155",
-                  fontWeight: 500,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  minWidth: "24px",
+                  minHeight: "24px",
+                  borderRadius: "999px",
+                  background: isActive ? "#ffffff" : "#f8fafc",
+                  border: `1px solid ${isActive ? meta.border : "#e5e7eb"}`,
+                  color: isActive ? meta.color : "#94a3b8",
+                  fontSize: "10px",
+                  fontWeight: 800,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  flexShrink: 0,
                 }}
               >
-                {meta.note}
-              </p>
+                {isActive ? "ON" : "GO"}
+              </span>
             </button>
           );
         })}

@@ -1,18 +1,31 @@
 import { appMeta } from "../appMeta";
+import type { NavigationSection } from "../navigationItems";
 import StatusPill from "./StatusPill";
 
-function Header() {
+type HeaderProps = {
+  currentSection: NavigationSection;
+  onOpenNavigation: () => void;
+  isNavigationOpen: boolean;
+  isCompact: boolean;
+};
+
+function Header({
+  currentSection,
+  onOpenNavigation,
+  isNavigationOpen,
+  isCompact,
+}: HeaderProps) {
   return (
     <header
       style={{
         display: "grid",
-        gap: "14px",
+        gap: "12px",
         marginBottom: "4px",
       }}
     >
       <div
         style={{
-          padding: "20px 22px",
+          padding: isCompact ? "16px 14px" : "20px 22px",
           borderRadius: "18px",
           border: "1px solid #dbe4f0",
           background:
@@ -22,52 +35,143 @@ function Header() {
       >
         <div
           style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            gap: "18px",
-            flexWrap: "wrap",
+            display: "grid",
+            gap: isCompact ? "14px" : "16px",
           }}
         >
           <div
             style={{
-              minWidth: "min(100%, 420px)",
-              flex: "1 1 420px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: "12px",
+              flexWrap: "wrap",
             }}
           >
-            <p
-              style={{
-                margin: "0 0 10px 0",
-                fontSize: "11px",
-                fontWeight: 700,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                color: "#475569",
-              }}
-            >
-              Command Deck
-            </p>
-
             <div
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                flexWrap: "wrap",
-                marginBottom: "12px",
+                display: "grid",
+                gap: "8px",
+                minWidth: 0,
+                flex: "1 1 320px",
               }}
             >
-              <StatusPill label={appMeta.badge} tone="indigo" />
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: "#475569",
+                }}
+              >
+                Command Deck
+              </p>
+
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <StatusPill label={appMeta.badge} tone="indigo" />
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    padding: "4px 10px",
+                    minHeight: "28px",
+                    borderRadius: "999px",
+                    border: "1px solid #dbe4f0",
+                    background: "#ffffff",
+                    color: "#475569",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  {currentSection}
+                </span>
+              </div>
             </div>
 
+            <button
+              type="button"
+              onClick={onOpenNavigation}
+              aria-label="Open navigation menu"
+              aria-pressed={isNavigationOpen}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minWidth: "44px",
+                minHeight: "44px",
+                borderRadius: "12px",
+                border: isNavigationOpen
+                  ? "1px solid #bfdbfe"
+                  : "1px solid #dbe4f0",
+                background: isNavigationOpen ? "#eff6ff" : "#ffffff",
+                cursor: "pointer",
+                flexShrink: 0,
+                touchAction: "manipulation",
+              }}
+            >
+              <span
+                aria-hidden="true"
+                style={{
+                  display: "grid",
+                  gap: "4px",
+                }}
+              >
+                <span
+                  style={{
+                    display: "block",
+                    width: "18px",
+                    height: "2px",
+                    borderRadius: "999px",
+                    background: "#334155",
+                  }}
+                />
+                <span
+                  style={{
+                    display: "block",
+                    width: "18px",
+                    height: "2px",
+                    borderRadius: "999px",
+                    background: "#334155",
+                  }}
+                />
+                <span
+                  style={{
+                    display: "block",
+                    width: "18px",
+                    height: "2px",
+                    borderRadius: "999px",
+                    background: "#334155",
+                  }}
+                />
+              </span>
+            </button>
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gap: "8px",
+            }}
+          >
             <h1
               style={{
                 margin: 0,
-                fontSize: "34px",
-                lineHeight: 1.1,
+                fontSize: isCompact ? "30px" : "34px",
+                lineHeight: 1.08,
                 fontWeight: 800,
                 letterSpacing: "-0.02em",
                 color: "#0f172a",
+                wordBreak: "break-word",
               }}
             >
               {appMeta.title}
@@ -75,89 +179,16 @@ function Header() {
 
             <p
               style={{
-                margin: "12px 0 0 0",
+                margin: 0,
                 color: "#334155",
-                lineHeight: 1.75,
-                fontSize: "15px",
+                lineHeight: 1.65,
+                fontSize: isCompact ? "14px" : "15px",
                 fontWeight: 500,
                 maxWidth: "760px",
               }}
             >
               {appMeta.subtitle}
             </p>
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gap: "10px",
-              minWidth: "220px",
-              flex: "0 1 260px",
-            }}
-          >
-            <div
-              style={{
-                padding: "12px 14px",
-                borderRadius: "14px",
-                background: "#ffffff",
-                border: "1px solid #dbe4f0",
-                boxShadow: "0 4px 10px rgba(15, 23, 42, 0.04)",
-              }}
-            >
-              <p
-                style={{
-                  margin: "0 0 8px 0",
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                  color: "#64748b",
-                }}
-              >
-                Live Status
-              </p>
-
-              <StatusPill
-                label={appMeta.statusText}
-                tone="gray"
-                uppercase={false}
-              />
-            </div>
-
-            <div
-              style={{
-                padding: "12px 14px",
-                borderRadius: "14px",
-                background: "#ffffff",
-                border: "1px solid #dbe4f0",
-                boxShadow: "0 4px 10px rgba(15, 23, 42, 0.04)",
-              }}
-            >
-              <p
-                style={{
-                  margin: "0 0 6px 0",
-                  fontSize: "10px",
-                  fontWeight: 700,
-                  letterSpacing: "0.06em",
-                  textTransform: "uppercase",
-                  color: "#64748b",
-                }}
-              >
-                Mission Note
-              </p>
-
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: "13px",
-                  lineHeight: 1.65,
-                  color: "#334155",
-                  fontWeight: 600,
-                }}
-              >
-                DeepStream の現在地を俯瞰しながら、各セクションを安全に更新していくためのトップパネルです。
-              </p>
-            </div>
           </div>
         </div>
       </div>

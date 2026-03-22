@@ -1,17 +1,17 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 type AppLayoutProps = {
   header: ReactNode;
-  sidebar: ReactNode;
   content: ReactNode;
   footer: ReactNode;
+  overlay?: ReactNode;
 };
 
 function AppLayout({
   header,
-  sidebar,
   content,
   footer,
+  overlay,
 }: AppLayoutProps) {
   const [viewportWidth, setViewportWidth] = useState<number>(() =>
     typeof window === "undefined" ? 1280 : window.innerWidth
@@ -34,32 +34,13 @@ function AppLayout({
     };
   }, []);
 
-  const isMobileLayout = viewportWidth < 980;
   const isPhoneLayout = viewportWidth < 640;
 
   const mainPadding = isPhoneLayout
     ? "16px 12px 28px"
-    : isMobileLayout
-      ? "24px 16px 36px"
-      : "32px 20px 40px";
+    : "28px 18px 40px";
 
-  const outerGap = isPhoneLayout ? "16px" : isMobileLayout ? "20px" : "24px";
-  const shellGap = isPhoneLayout ? "16px" : isMobileLayout ? "20px" : "24px";
-
-  const sidebarWrapperStyle: CSSProperties = {
-    display: "grid",
-    gap: "16px",
-    position: isMobileLayout ? "static" : "sticky",
-    top: isMobileLayout ? undefined : "24px",
-    alignSelf: "start",
-    minWidth: 0,
-  };
-
-  const contentWrapperStyle: CSSProperties = {
-    display: "grid",
-    gap: isPhoneLayout ? "16px" : "20px",
-    minWidth: 0,
-  };
+  const outerGap = isPhoneLayout ? "16px" : "24px";
 
   return (
     <main
@@ -80,32 +61,11 @@ function AppLayout({
         }}
       >
         {header}
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: isMobileLayout
-              ? "minmax(0, 1fr)"
-              : "minmax(280px, 320px) minmax(0, 1fr)",
-            gap: shellGap,
-            alignItems: "start",
-          }}
-        >
-          {isMobileLayout ? (
-            <>
-              <div style={contentWrapperStyle}>{content}</div>
-              <div style={sidebarWrapperStyle}>{sidebar}</div>
-            </>
-          ) : (
-            <>
-              <div style={sidebarWrapperStyle}>{sidebar}</div>
-              <div style={contentWrapperStyle}>{content}</div>
-            </>
-          )}
-        </div>
-
+        {content}
         {footer}
       </div>
+
+      {overlay}
     </main>
   );
 }
