@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
 type AppLayoutProps = {
   header: ReactNode;
@@ -13,13 +13,62 @@ function AppLayout({
   content,
   footer,
 }: AppLayoutProps) {
+  const [viewportWidth, setViewportWidth] = useState<number>(() =>
+    typeof window === "undefined" ? 1280 : window.innerWidth
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  const isMobileLayout = viewportWidth < 980;
+  const isPhoneLayout = viewportWidth < 640;
+
+  const mainPadding = isPhoneLayout
+    ? "16px 12px 28px"
+    : isMobileLayout
+      ? "24px 16px 36px"
+      : "32px 20px 40px";
+
+  const outerGap = isPhoneLayout ? "16px" : isMobileLayout ? "20px" : "24px";
+  const shellGap = isPhoneLayout ? "16px" : isMobileLayout ? "20px" : "24px";
+
+  const sidebarWrapperStyle: CSSProperties = {
+    display: "grid",
+    gap: "16px",
+    position: isMobileLayout ? "static" : "sticky",
+    top: isMobileLayout ? undefined : "24px",
+    alignSelf: "start",
+    minWidth: 0,
+  };
+
+  const contentWrapperStyle: CSSProperties = {
+    display: "grid",
+    gap: isPhoneLayout ? "16px" : "20px",
+    minWidth: 0,
+  };
+
   return (
     <main
       style={{
         minHeight: "100vh",
-        padding: "32px 20px 40px",
+        padding: mainPadding,
         background:
           "radial-gradient(circle at top, #eef6ff 0%, #f8fafc 38%, #f8fafc 100%)",
+        boxSizing: "border-box",
       }}
     >
       <div
@@ -27,7 +76,7 @@ function AppLayout({
           maxWidth: "1360px",
           margin: "0 auto",
           display: "grid",
-          gap: "24px",
+          gap: outerGap,
         }}
       >
         {header}
@@ -35,32 +84,24 @@ function AppLayout({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "minmax(280px, 320px) minmax(0, 1fr)",
-            gap: "24px",
+            gridTemplateColumns: isMobileLayout
+              ? "minmax(0, 1fr)"
+              : "minmax(280px, 320px) minmax(0, 1fr)",
+            gap: shellGap,
             alignItems: "start",
           }}
         >
-          <div
-            style={{
-              display: "grid",
-              gap: "16px",
-              position: "sticky",
-              top: "24px",
-              alignSelf: "start",
-            }}
-          >
-            {sidebar}
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gap: "20px",
-              minWidth: 0,
-            }}
-          >
-            {content}
-          </div>
+          {isMobileLayout ? (
+            <>
+              <div style={contentWrapperStyle}>{content}</div>
+              <div style={sidebarWrapperStyle}>{sidebar}</div>
+            </>
+          ) : (
+            <>
+              <div style={sidebarWrapperStyle}>{sidebar}</div>
+              <div style={contentWrapperStyle}>{content}</div>
+            </>
+          )}
         </div>
 
         {footer}
